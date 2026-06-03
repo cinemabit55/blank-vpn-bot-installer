@@ -1,0 +1,21 @@
+{
+  "source_repo": "git@github.com:cinemabit55/templarvpn.git",
+  "source_ref": "main",
+  "install_root": "/opt",
+  "project_name": "VPN Service",
+  "server_ip": "203.0.113.10",
+  "root_domain": "example.com",
+  "panel_domain": "panel.example.com",
+  "sub_domain": "sub.example.com",
+  "cabinet_domain": "cabinet.example.com",
+  "api_domain": "api.example.com",
+  "le_email": "admin@example.com",
+  "dns_mode": "manual",
+  "bot_token": "123456:replace-me",
+  "bot_username": "my_vpn_bot",
+  "admin_ids": "123456789",
+  "support_username": "@support",
+  "support_mode": "both",
+  "telegram_stars_rate_rub": "1.3",
+  "remnawave_api_key": ""
+}
