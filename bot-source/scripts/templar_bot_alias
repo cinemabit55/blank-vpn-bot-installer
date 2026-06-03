@@ -18,7 +18,7 @@ fi
 
 print_commands() {
   cat <<'COMMANDS'
-Templar bot shortcut commands:
+VPN bot shortcut commands:
   add_banner       interactively replace a bot screen banner
   set_banner       replace a banner non-interactively: set_banner SLOT LANG FILE
   list_banners     show current banner files and Telegram cache path
@@ -45,7 +45,7 @@ case "$COMMAND_NAME" in
     set -- reset "$@"
     ;;
   *)
-    echo "Unknown templar bot shortcut: $COMMAND_NAME" >&2
+    echo "Unknown VPN bot shortcut: $COMMAND_NAME" >&2
     echo "Run bot_commands for the available shortcuts." >&2
     exit 64
     ;;

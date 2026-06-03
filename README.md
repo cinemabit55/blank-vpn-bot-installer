@@ -36,6 +36,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - RemnaWave admin account and API token
 - Telegram Stars as the only enabled payment method by default
 - Neutral default banner pack for the bot screens
+- Non-destructive source sync on reruns, preserving runtime `data`, `logs`, and uploads
 - Payment alias: `add_payment`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`

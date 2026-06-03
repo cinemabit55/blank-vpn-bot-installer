@@ -1,4 +1,4 @@
-# Templar Node Shortcuts
+# VPN Node Shortcuts
 
 Install on a control-plane host:
 

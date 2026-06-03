@@ -9,7 +9,7 @@ COMMAND_NAME="$(basename "$0")"
 
 print_commands() {
   cat <<'COMMANDS'
-Templar node shortcut commands:
+VPN node shortcut commands:
   add_kaskaddir            interactive cascade + foreign direct provisioning, both remote_dest/no local site
   add_cascade              same as add_kaskaddir
   add_direct_site          interactive direct RU+WARP provisioning with domain/site masking
@@ -169,14 +169,14 @@ case "$COMMAND_NAME" in
     set -- post-bootstrap "$@"
     ;;
   *)
-    echo "Unknown templar node shortcut: $COMMAND_NAME" >&2
+    echo "Unknown VPN node shortcut: $COMMAND_NAME" >&2
     echo "Run node_commands for the available shortcuts." >&2
     exit 64
     ;;
 esac
 
 if [ ! -f "$CLI_PATH" ]; then
-  echo "Templar node CLI not found: $CLI_PATH" >&2
+  echo "VPN node CLI not found: $CLI_PATH" >&2
   exit 66
 fi
 if [ ! -x "$PYTHON_BIN" ]; then

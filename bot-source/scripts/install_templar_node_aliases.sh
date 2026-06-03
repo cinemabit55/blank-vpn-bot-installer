@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Install Templar node shortcut commands into /usr/local/bin by default.
+# Install VPN node shortcut commands into /usr/local/bin by default.
 set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -15,5 +15,5 @@ for name in $COMMANDS; do
   ln -sf "$DISPATCHER" "$TARGET_DIR/$name"
 done
 
-echo "Installed Templar node shortcuts to $TARGET_DIR"
+echo "Installed VPN node shortcuts to $TARGET_DIR"
 echo "Run: node_commands"

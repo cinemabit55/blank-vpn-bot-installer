@@ -433,9 +433,7 @@ def copy_tree(src: Path, dst: Path, *, dry_run: bool = False) -> None:
     status(f"sync {src} -> {dst}")
     if dry_run:
         return
-    if dst.exists():
-        shutil.rmtree(dst)
-    shutil.copytree(src, dst)
+    shutil.copytree(src, dst, dirs_exist_ok=True)
 
 
 def bot_env(cfg: dict[str, Any]) -> str:

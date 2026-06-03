@@ -15,5 +15,5 @@ for name in $COMMANDS; do
   ln -sf "$DISPATCHER" "$TARGET_DIR/$name"
 done
 
-echo "Installed Templar bot shortcuts to $TARGET_DIR"
+echo "Installed VPN bot shortcuts to $TARGET_DIR"
 echo "Run: bot_commands"

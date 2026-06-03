@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage Telegram bot banner assets on an installed Bedolaga/Templar server."""
+"""Manage Telegram bot banner assets on an installed VPN bot server."""
 
 from __future__ import annotations
 
@@ -405,7 +405,7 @@ def print_reset_result(result: BannerResetResult) -> None:
 
 def print_commands() -> None:
     print(
-        """Templar bot banner commands:
+        """VPN bot banner commands:
   add_banner                  interactive banner replacement
   set_banner SLOT LANG FILE   non-interactive banner replacement
   list_banners                show installed banner files

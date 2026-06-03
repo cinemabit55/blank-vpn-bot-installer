@@ -363,7 +363,8 @@ def _render_routing(config: NodeConfig, *, route_overrides: RouteOverrides | Non
     elif config.warp.mode == WarpMode.XRAY_NATIVE:
         inbound_tags = _warp_inbound_tags(config, public_tag)
         warp_tag = config.warp.outbound_tag or 'WARP_OUT'
-        rules.extend(_discord_direct_rules(inbound_tags=inbound_tags))
+        if config.warp.discord_direct:
+            rules.extend(_discord_direct_rules(inbound_tags=inbound_tags))
         rules.extend(_telegram_direct_rules(inbound_tags=inbound_tags))
         rules.append({'type': 'field', 'inboundTag': inbound_tags, 'outboundTag': warp_tag})
     return {'domainStrategy': 'IPIfNonMatch', 'rules': rules}

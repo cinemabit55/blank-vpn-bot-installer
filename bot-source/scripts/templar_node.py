@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Templar node onboarding CLI from a source checkout."""
+"""Run the VPN node onboarding CLI from a source checkout."""
 
 import sys
 from pathlib import Path

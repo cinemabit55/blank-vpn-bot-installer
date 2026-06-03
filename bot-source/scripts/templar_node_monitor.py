@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Templar node availability checks and notify the admin Telegram chat.
+"""Run VPN node availability checks and notify the admin Telegram chat.
 
 The monitor is intentionally host-friendly: it reuses scripts/templar_node.py
 checks, stores a small JSON state file, and sends alerts through the same bot
@@ -86,7 +86,7 @@ class MonitorError(RuntimeError):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description='Run Templar node checks and send Telegram admin alerts.')
+    parser = argparse.ArgumentParser(description='Run VPN node checks and send Telegram admin alerts.')
     parser.add_argument('--config', type=Path, required=True, help='YAML/JSON monitor config file.')
     parser.add_argument('--no-notify', action='store_true', help='Run checks without sending Telegram alerts.')
     parser.add_argument('--notify-first-ok', action='store_true', help='Send OK notification for checks first seen as healthy.')

@@ -382,6 +382,7 @@ class WarpConfig(TemplarBaseModel):
     reserved_source: str | None = None
     reserved: list[int] | None = None
     registration_ref: str | None = None
+    discord_direct: bool = True
 
     @field_validator('outbound_tag', 'reserved_source')
     @classmethod

@@ -165,3 +165,41 @@ def test_default_banner_pack_targets_all_expected_files(tmp_path: Path) -> None:
     assert 'profile_en.jpg' in filenames
     assert 'welcome.jpg' in filenames
     assert install_default_banners(tmp_path, 'VPN Service', dry_run=True) == 22
+
+
+def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
+    root = Path(__file__).resolve().parents[1]
+    schemas = root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py'
+    profile = root / 'bot-source' / 'app' / 'templar_node' / 'xray_profile.py'
+
+    assert 'discord_direct: bool = True' in schemas.read_text(encoding='utf-8')
+    assert 'if config.warp.discord_direct:' in profile.read_text(encoding='utf-8')
+
+
+def test_copy_tree_preserves_existing_runtime_files(tmp_path: Path) -> None:
+    src = tmp_path / 'src'
+    dst = tmp_path / 'dst'
+    src.mkdir()
+    dst.mkdir()
+    (src / 'app.py').write_text('new code', encoding='utf-8')
+    (dst / 'data').mkdir()
+    (dst / 'data' / 'runtime.json').write_text('{}', encoding='utf-8')
+
+    installer.copy_tree(src, dst)
+
+    assert (dst / 'app.py').read_text(encoding='utf-8') == 'new code'
+    assert (dst / 'data' / 'runtime.json').read_text(encoding='utf-8') == '{}'
+
+
+def test_bundled_shortcut_help_is_unbranded() -> None:
+    root = Path(__file__).resolve().parents[1]
+    user_visible_files = [
+        root / 'bot-source' / 'scripts' / 'templar_bot_alias',
+        root / 'bot-source' / 'scripts' / 'templar_node_alias',
+        root / 'bot-source' / 'scripts' / 'banner_admin.py',
+        root / 'bot-source' / 'scripts' / 'install_templar_bot_aliases.sh',
+        root / 'bot-source' / 'scripts' / 'install_templar_node_aliases.sh',
+    ]
+
+    for path in user_visible_files:
+        assert 'Templar' not in path.read_text(encoding='utf-8')

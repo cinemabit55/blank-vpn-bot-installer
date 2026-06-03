@@ -17,6 +17,7 @@
 - Root-only install summary.
 - Markdown and PDF operator manual.
 - Neutral generated banner pack for blank installs.
+- Non-destructive source sync on installer reruns.
 - `add_payment` helper:
   - provider choice;
   - required credential prompts;
@@ -26,5 +27,5 @@
 
 ## Next
 
-- Safer resume system with per-step idempotency checks.
+- Safer resume system with per-step idempotency checks beyond source sync.
 - Optional backup/restore module for new blank installs.
