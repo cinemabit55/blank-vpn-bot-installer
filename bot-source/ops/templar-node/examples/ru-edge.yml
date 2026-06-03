@@ -1,0 +1,103 @@
+schema_version: 1
+role: ru-edge
+
+display:
+  internal_name: RU-EDGE-01
+  name: RU Cascade
+  cabinet_override: null
+
+country_code: RU
+domain: ru-01.example-node-domain.com
+public_ipv4: 192.0.2.30
+public_ipv6: null
+
+domain_rotation:
+  spare_domains:
+    - ru-01b.example-node-domain.com
+    - ru-01c.example-node-domain.com
+  dns_ttl_seconds: 300
+
+main_server:
+  ipv4: 198.51.100.20
+  remnawave_api_url: https://panel.example.com
+
+ssh:
+  port: 22
+  admin_user: templar
+  admin_allowlist:
+    - 198.51.100.10
+    - 198.51.100.20
+
+remnanode:
+  node_port: 2222
+  secret_key_ref: secrets/remnanode-ru-edge-01
+
+xray:
+  xtls_api_port: 61000
+  config_profile_uuid: null
+  public_inbound_uuid: public-inbound-uuid
+
+host:
+  remark: null
+  address: null
+  port: 443
+  inbound_ref: public
+  visibility: true
+
+reality:
+  strategy: local_decoy_site
+  credentials_ref: secrets/reality-public-ru-edge-01
+  public_port: 443
+  local_decoy_addr: 127.0.0.1
+  local_decoy_port: 8443
+  flow: xtls-rprx-vision
+  server_names:
+    - ru-01.example-node-domain.com
+
+site:
+  engine: caddy
+  template: simple-studio
+  title: Example Digital
+  contact_email: info@ru-01.example-node-domain.com
+  certificate_mode: file
+  certificate_source: external_acme_dns01
+  certificate_ca: public
+  dns_api_token_ref: secrets/dns-api-token
+
+warp:
+  mode: disabled
+
+transit:
+  mode: vless_reality
+  outbound_tag: TRANSIT_TO_FOREIGN
+  foreign_exit_domain: foreign-01.example-node-domain.com
+  foreign_exit_port: 10443
+  server_names:
+    - foreign-01.example-node-domain.com
+  service_user: bridge_ru_to_foreign
+  service_user_credential_ref: secrets/transit-user-foreign-01
+  reality_credentials_ref: secrets/transit-reality-foreign-01
+  backup_outbounds:
+    - tag: TRANSIT_TO_FOREIGN_BACKUP
+      domain: foreign-02.example-node-domain.com
+      port: 10443
+      server_names:
+        - foreign-02.example-node-domain.com
+      service_user_credential_ref: secrets/transit-user-foreign-02
+      reality_credentials_ref: secrets/transit-reality-foreign-02
+
+routing:
+  ru_route: direct
+  default_route: foreign_exit
+  ru_dns:
+    - https://common.dot.dns.yandex.net/dns-query
+    - tcp://77.88.8.8:53
+    - 77.88.8.1
+  foreign_dns_via_transit: true
+
+bedolaga:
+  internal_squad_name: loc-ru-cascade
+  external_squad_name: ext-ru-cascade
+  attach_to_tariff_slugs:
+    - ru-cascade
+    - premium-all

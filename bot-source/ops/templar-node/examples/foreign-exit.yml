@@ -1,0 +1,90 @@
+schema_version: 1
+role: foreign-exit
+
+display:
+  internal_name: FOREIGN-EXIT-01
+  name: Latvia WARP
+  cabinet_override: null
+
+country_code: LV
+domain: foreign-01.example-node-domain.com
+public_ipv4: 203.0.113.10
+public_ipv6: null
+
+domain_rotation:
+  spare_domains:
+    - foreign-01b.example-node-domain.com
+    - foreign-01c.example-node-domain.com
+  dns_ttl_seconds: 300
+
+main_server:
+  ipv4: 198.51.100.20
+  remnawave_api_url: https://panel.example.com
+
+ssh:
+  port: 22
+  admin_user: templar
+  admin_allowlist:
+    - 198.51.100.10
+    - 198.51.100.20
+
+remnanode:
+  node_port: 2222
+  secret_key_ref: secrets/remnanode-foreign-01
+
+xray:
+  xtls_api_port: 61000
+  config_profile_uuid: null
+  public_inbound_uuid: public-inbound-uuid
+
+host:
+  remark: null
+  address: null
+  port: 443
+  inbound_ref: public
+  visibility: true
+
+reality:
+  strategy: local_decoy_site
+  credentials_ref: secrets/reality-public-foreign-01
+  public_port: 443
+  local_decoy_addr: 127.0.0.1
+  local_decoy_port: 8443
+  flow: xtls-rprx-vision
+  server_names:
+    - foreign-01.example-node-domain.com
+
+site:
+  engine: caddy
+  template: simple-studio
+  title: Example Digital
+  contact_email: info@foreign-01.example-node-domain.com
+  certificate_mode: file
+  certificate_source: external_acme_dns01
+  certificate_ca: public
+  dns_api_token_ref: secrets/dns-api-token
+
+warp:
+  mode: xray_native
+  outbound_tag: WARP_OUT
+  reserved_source: warp_registration_client_id_b64
+  reserved: null
+  registration_ref: secrets/warp-foreign-01
+
+transit:
+  mode: vless_reality
+  inbound_tag: VLESS_Transit_FOREIGN_EXIT_01
+  listen_port: 10443
+  flow: xtls-rprx-vision
+  allow_from:
+    - 192.0.2.30
+  service_user: bridge_ru_to_foreign
+  service_user_credential_ref: secrets/transit-user-foreign-01
+  reality_credentials_ref: secrets/transit-reality-foreign-01
+
+bedolaga:
+  internal_squad_name: loc-foreign-direct
+  external_squad_name: ext-foreign
+  attach_to_tariff_slugs:
+    - foreign-direct
+    - premium-all

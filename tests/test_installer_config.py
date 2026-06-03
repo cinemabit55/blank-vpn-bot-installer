@@ -30,7 +30,8 @@ payment_admin = _load_payment_admin()
 
 
 CFG = {
-    'source_repo': 'git@github.com:cinemabit55/templarvpn.git',
+    'source_mode': 'bundled',
+    'source_repo': '',
     'source_ref': 'main',
     'bot_dir': '/opt/bedolaga',
     'remnawave_dir': '/opt/remnawave',
@@ -53,6 +54,8 @@ CFG = {
     'support_username': '@support',
     'support_mode': 'both',
     'telegram_stars_rate_rub': '1.3',
+    'remnawave_admin_username': 'admin',
+    'remnawave_admin_password': 'GeneratedPassword1234567890',
     'remnawave_api_key': '',
     'postgres_password': 'bot-db-password',
     'remnawave_postgres_password': 'panel-db-password',
@@ -133,3 +136,20 @@ def test_payment_config_sql_enables_method() -> None:
     assert "method_id = 'cryptobot'" in sql
     assert 'is_enabled = TRUE' in sql
     assert "display_name = 'CryptoBot'" in sql
+
+
+def test_random_remnawave_password_matches_panel_rules() -> None:
+    password = installer.random_remnawave_admin_password()
+
+    assert len(password) >= 24
+    assert any(char.isupper() for char in password)
+    assert any(char.islower() for char in password)
+    assert any(char.isdigit() for char in password)
+
+
+def test_response_value_extracts_remnawave_token() -> None:
+    response = {'response': {'token': 'rw-token', 'accessToken': 'jwt-token'}}
+
+    assert installer.response_value(response, 'response', 'token') == 'rw-token'
+    assert installer.response_value(response, 'response', 'accessToken') == 'jwt-token'
+    assert installer.response_value(response, 'missing', 'token') is None

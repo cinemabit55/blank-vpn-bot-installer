@@ -1,0 +1,37 @@
+services:
+  caddy:
+    image: caddy:2.10.2
+    container_name: caddy-remnawave
+    hostname: caddy
+    restart: always
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:443:443/udp"  # HTTP/3 QUIC
+    networks:
+      - remnawave-network
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - ./logs:/var/log/caddy
+      - ./landing:/srv/landing:ro
+      - caddy-ssl-data:/data
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  remnawave-network:
+    name: remnawave-network
+    driver: bridge
+    external: true
+
+volumes:
+  caddy-ssl-data:
+    driver: local
+    external: false
+    name: caddy-ssl-data

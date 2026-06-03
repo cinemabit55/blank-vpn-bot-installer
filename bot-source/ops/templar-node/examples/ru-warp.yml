@@ -1,0 +1,82 @@
+schema_version: 1
+role: ru-warp
+
+display:
+  internal_name: RU-WARP-01
+  name: RU WARP
+  cabinet_override: null
+
+country_code: RU
+domain: ru-warp-01.example-node-domain.com
+public_ipv4: 192.0.2.40
+public_ipv6: null
+
+domain_rotation:
+  spare_domains:
+    - ru-warp-01b.example-node-domain.com
+    - ru-warp-01c.example-node-domain.com
+  dns_ttl_seconds: 300
+
+main_server:
+  ipv4: 198.51.100.20
+  remnawave_api_url: https://panel.example.com
+
+ssh:
+  port: 22
+  admin_user: templar
+  admin_allowlist:
+    - 198.51.100.10
+    - 198.51.100.20
+
+remnanode:
+  node_port: 2222
+  secret_key_ref: secrets/remnanode-ru-warp-01
+
+xray:
+  xtls_api_port: 61000
+  config_profile_uuid: null
+  public_inbound_uuid: public-inbound-uuid
+
+host:
+  remark: null
+  address: null
+  port: 443
+  inbound_ref: public
+  visibility: true
+
+reality:
+  strategy: local_decoy_site
+  credentials_ref: secrets/reality-public-ru-warp-01
+  public_port: 443
+  local_decoy_addr: 127.0.0.1
+  local_decoy_port: 8443
+  flow: xtls-rprx-vision
+  server_names:
+    - ru-warp-01.example-node-domain.com
+
+site:
+  engine: caddy
+  template: simple-studio
+  title: Example Digital
+  contact_email: info@ru-warp-01.example-node-domain.com
+  certificate_mode: file
+  certificate_source: external_acme_dns01
+  certificate_ca: public
+  dns_api_token_ref: secrets/dns-api-token
+
+warp:
+  mode: xray_native
+  outbound_tag: WARP_OUT
+  reserved_source: warp_registration_client_id_b64
+  reserved: null
+  registration_ref: secrets/warp-ru-warp-01
+
+transit:
+  mode: disabled
+
+bedolaga:
+  internal_squad_name: loc-ru-warp
+  external_squad_name: ext-ru-warp
+  attach_to_tariff_slugs:
+    - ru-warp
+    - premium-all

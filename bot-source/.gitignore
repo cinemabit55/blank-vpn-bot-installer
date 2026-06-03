@@ -1,0 +1,92 @@
+# === Секреты ===
+.env
+.env.*
+!.env.example
+
+# === Runtime state (Docker volumes / mount) ===
+data/
+logs/
+uploads/
+*.log
+*.log.*
+
+# === Database dumps ===
+*.sql
+*.dump
+backup-*.sql
+
+# === Бэкапы патчей через имена файлов ===
+*.backup
+*.bak
+*.bak.*
+*.before-*
+*.backup-*
+app.backup-*/
+app.before-*/
+app_backup_*/
+app_broken_*/
+.backups/
+
+# === Разведочные .txt и скрэтчи ===
+recon*.txt
+branch.txt
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# === IDE / Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Emergency backup policy ===
+# Raw secrets/runtime are restored from encrypted emergency_private/*.enc
+emergency_dumps/
+emergency_private/*.tar.gz
+!emergency_private/*.enc
+
+# Caddy/Cloudflare origin private material
+ops/caddy-remnawave/.env
+ops/caddy-remnawave/certs/
+ops/caddy-remnawave/logs/
+
+# Redis/database raw snapshots
+*.rdb
+*.dump
+*.sql
+
+# Private keys
+*.key
+*.pem
+
+# Remnawave/cabinet raw secrets are kept only inside encrypted emergency archives
+ops/remnawave/.env
+ops/remnawave/.env.*
+ops/remnawave/admin-credentials.txt
+ops/cabinet/.env
+ops/cabinet/.env.*
+ops/cabinet/.git/
+ops/cabinet/node_modules/
+ops/cabinet/dist/

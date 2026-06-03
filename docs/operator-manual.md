@@ -20,7 +20,7 @@
 - `tickets only` - только тикеты;
 - `contact only` - только контакт поддержки.
 
-Если исходный репозиторий бота приватный, сервер должен иметь доступ к нему до запуска установки. Подойдет SSH deploy key или HTTPS-ссылка с токеном.
+По умолчанию отдельный репозиторий бота не нужен: установщик берет код из `bot-source/` внутри своего репозитория. Внешний Git-репозиторий можно выбрать только как дополнительный режим.
 
 ## 2. Запуск установки
 
@@ -28,6 +28,15 @@
 
 ```bash
 sudo bash <(curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh)
+```
+
+Если репозиторий установщика private, нужен GitHub token с доступом на чтение:
+
+```bash
+export INSTALLER_GITHUB_TOKEN=github_pat_or_classic_token
+curl -fsSL -H "Authorization: Bearer $INSTALLER_GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh \
+  | sudo INSTALLER_GITHUB_TOKEN="$INSTALLER_GITHUB_TOKEN" bash
 ```
 
 Пока GitHub-репозиторий установщика не опубликован, можно запускать из локального checkout:
@@ -57,7 +66,9 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Telegram поддержки;
 - режим поддержки;
 - курс Telegram Stars;
-- RemnaWave API token, если он уже создан.
+- RemnaWave admin username;
+- RemnaWave admin password, либо пустое значение для автогенерации;
+- RemnaWave API token, если он уже есть. Если оставить пустым, установщик создаст token сам.
 
 В конце установщик выводит ссылки, логины, важные токены и список команд. Копия summary сохраняется в:
 
@@ -80,20 +91,25 @@ api.example.com     A   SERVER_IP
 
 Правило для Cloudflare: `sub.example.com` всегда DNS-only. Его нельзя проксировать, иначе HAPP/Xray-подписка и некоторые проверки могут работать нестабильно.
 
-## 5. RemnaWave API token
+## 5. RemnaWave admin и API token
 
-Если token не был введен во время установки:
+Обычный сценарий полностью автоматический:
 
-1. Открой RemnaWave panel.
-2. Создай API token.
-3. Вставь его в `/opt/bedolaga/.env` как `REMNAWAVE_API_KEY`.
-4. Вставь его в `/opt/remnawave/.env.subscription` как `REMNAWAVE_API_TOKEN`.
-5. Пересоздай/перезапусти сервисы:
+1. Установщик запускает RemnaWave.
+2. Ждет локальный API `http://127.0.0.1:3000/api/auth/status`.
+3. Если регистрация открыта, создает admin-пользователя.
+4. Логинится и получает admin JWT.
+5. Создает долгоживущий API token через `/api/tokens`.
+6. Записывает token в `/opt/bedolaga/.env` и `/opt/remnawave/.env.subscription`.
+7. После этого запускает бот, кабинет, страницу подписки и Caddy.
 
-```bash
-cd /opt/bedolaga && docker compose up -d --force-recreate bot
-cd /opt/remnawave && docker compose restart remnawave-subscription-page
+RemnaWave admin login/password и API token будут в финальном файле:
+
+```text
+/opt/blank-vpn-bot-installer/install-summary.txt
 ```
+
+Файл доступен только root.
 
 ## 6. Команды после установки
 

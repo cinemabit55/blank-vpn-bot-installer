@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:," />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0f1a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Loading...</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+    <script>
+      // Load Telegram Web App script only inside Telegram environment
+      (function() {
+        var isTelegram = window.TelegramWebviewProxy ||
+          location.hash.indexOf('tgWebApp') !== -1 ||
+          location.search.indexOf('tgWebApp') !== -1;
+        if (isTelegram) {
+          var s = document.createElement('script');
+          s.src = 'https://telegram.org/js/telegram-web-app.js';
+          s.async = true;
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
+    <style>
+      body {
+        background-color: #0a0f1a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

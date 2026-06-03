@@ -5,9 +5,11 @@
 - Separate installer repository skeleton.
 - Shell bootstrap script.
 - Python interactive installer.
+- Bundled `bot-source/` mode as the default source path.
 - Manual or Cloudflare DNS A-record flow.
 - Fresh bot `.env` generation.
 - Fresh RemnaWave `.env` and subscription-page `.env` generation.
+- Automatic RemnaWave admin registration/login and API token creation.
 - Caddyfile generation with HAPP stability headers and RU direct routing header.
 - Cabinet frontend config generation.
 - Docker Compose startup sequence.
@@ -23,7 +25,6 @@
 
 ## Next
 
-- RemnaWave API token automation or guided pause after panel bootstrap.
 - Default neutral banners for blank installs.
 - Safer resume system with per-step idempotency checks.
 - Optional backup/restore module for new blank installs.

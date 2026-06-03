@@ -1,0 +1,200 @@
+#!/usr/bin/env sh
+# Short command dispatcher for scripts/templar_node.py.
+set -eu
+
+REPO_DIR="${TEMPLAR_NODE_REPO_DIR:-/opt/bedolaga}"
+PYTHON_BIN="${TEMPLAR_NODE_PYTHON:-$REPO_DIR/.venv/bin/python}"
+CLI_PATH="${TEMPLAR_NODE_CLI:-$REPO_DIR/scripts/templar_node.py}"
+COMMAND_NAME="$(basename "$0")"
+
+print_commands() {
+  cat <<'COMMANDS'
+Templar node shortcut commands:
+  add_kaskaddir            interactive cascade + foreign direct provisioning, both remote_dest/no local site
+  add_cascade              same as add_kaskaddir
+  add_direct_site          interactive direct RU+WARP provisioning with domain/site masking
+  add_direct               interactive direct RU+WARP provisioning with remote_dest/xHTTP/Firefox defaults
+  add_inbound              add one more RU cascade edge to an existing foreign exit, remote_dest/no local site
+  add_routes               add/apply routing rules for a RU cascade edge
+  delete_node              full interactive delete, applies immediately after selection
+  delete_nodes             same as delete_node
+  preview_delete_node      full delete dry-run preview
+  list_nodes               list discovered node configs
+  validate_node            validate a node YAML config
+  plan_node                print onboarding plan
+  render_node              render bootstrap artifacts
+  generate_node            generate node YAML configs
+  wizard_node              interactive config generator
+  simulate_node            run local fake onboarding
+  check_node_secrets       check secret refs
+  set_node_secret          write one secret ref
+  check_remnawave          run RemnaWave API contract checks
+  remnawave_keygen         fetch/write RemnaWave Node SECRET_KEY
+  check_cloudflare         check Cloudflare zones
+  upsert_node_dns          create/update node DNS records
+  rotate_node_domain       prepare/switch node domain rotation
+  change_sni               change remote_dest REALITY target/SNI and apply RemnaWave
+  check_node_availability  run main/control-plane availability checks
+  check_foreign_from_ru    check foreign-exit from a RU-edge vantage point
+  check_vpn_client         run synthetic VPN client/WARP check
+  register_node_warp       register WARP and write registration secret
+  show_node_state          show saved onboarding state
+  init_node_state          initialize onboarding state
+  mark_node_state          mark a checkpoint
+  cleanup_node_orphans     show/clear orphaned state records
+  add_node_route           add route overrides
+  apply_node_routes        apply route overrides to profile
+  show_node_routes         show route overrides
+  run_node_operator        run high-level operator scenarios
+  prebootstrap_node        run pre-bootstrap phase
+  bootstrap_node           run bootstrap phase
+  postbootstrap_node       run post-bootstrap phase
+COMMANDS
+}
+
+case "$COMMAND_NAME" in
+  node_commands|templar_node_commands)
+    print_commands
+    exit 0
+    ;;
+  add_kaskaddir|add_cascade|add_cascade_direct)
+    set -- quick cascade-direct "$@"
+    ;;
+  add_direct_site|add_ru_direct_site)
+    set -- quick direct-site "$@"
+    ;;
+  add_direct|add_direct_remote|add_ru_direct|add_ru_direct_remote)
+    set -- quick direct-remote "$@"
+    ;;
+  add_inbound|add_ru_edge|add_cascade_inbound)
+    set -- quick extra-ru-edge "$@"
+    ;;
+  add_routes|add_routing_rules)
+    set -- quick routing-add "$@"
+    ;;
+  delete_node|delete_nodes)
+    set -- delete --full --yes "$@"
+    ;;
+  preview_delete_node|delete_node_preview)
+    set -- delete --full "$@"
+    ;;
+  list_nodes)
+    set -- delete --list "$@"
+    ;;
+  validate_node)
+    set -- validate "$@"
+    ;;
+  plan_node)
+    set -- plan "$@"
+    ;;
+  render_node)
+    set -- render "$@"
+    ;;
+  generate_node)
+    set -- generate "$@"
+    ;;
+  wizard_node)
+    set -- wizard "$@"
+    ;;
+  simulate_node)
+    set -- simulate "$@"
+    ;;
+  check_node_secrets)
+    set -- secrets-check "$@"
+    ;;
+  set_node_secret)
+    set -- secret-set "$@"
+    ;;
+  check_remnawave)
+    set -- remnawave-check "$@"
+    ;;
+  remnawave_keygen)
+    set -- remnawave-keygen "$@"
+    ;;
+  check_cloudflare)
+    set -- cloudflare-check "$@"
+    ;;
+  upsert_node_dns)
+    set -- dns-upsert "$@"
+    ;;
+  rotate_node_domain)
+    set -- rotate-domain "$@"
+    ;;
+  change_sni|change_cine|change_sine)
+    set -- quick sni-change "$@"
+    ;;
+  check_node_availability)
+    set -- availability-check "$@"
+    ;;
+  check_foreign_from_ru)
+    set -- ru-edge-check "$@"
+    ;;
+  check_vpn_client)
+    set -- synthetic-vpn-check "$@"
+    ;;
+  register_node_warp)
+    set -- warp-register "$@"
+    ;;
+  show_node_state)
+    set -- state-show "$@"
+    ;;
+  init_node_state)
+    set -- state-init "$@"
+    ;;
+  mark_node_state)
+    set -- state-mark "$@"
+    ;;
+  cleanup_node_orphans)
+    set -- cleanup-orphans "$@"
+    ;;
+  add_node_route)
+    set -- route-add "$@"
+    ;;
+  apply_node_routes)
+    set -- route-apply "$@"
+    ;;
+  show_node_routes)
+    set -- route-show "$@"
+    ;;
+  run_node_operator)
+    set -- operator "$@"
+    ;;
+  prebootstrap_node)
+    set -- pre-bootstrap "$@"
+    ;;
+  bootstrap_node)
+    set -- bootstrap "$@"
+    ;;
+  postbootstrap_node)
+    set -- post-bootstrap "$@"
+    ;;
+  *)
+    echo "Unknown templar node shortcut: $COMMAND_NAME" >&2
+    echo "Run node_commands for the available shortcuts." >&2
+    exit 64
+    ;;
+esac
+
+if [ ! -f "$CLI_PATH" ]; then
+  echo "Templar node CLI not found: $CLI_PATH" >&2
+  exit 66
+fi
+if [ ! -x "$PYTHON_BIN" ]; then
+  if [ -x "$REPO_DIR/.venv-templar-node/bin/python" ]; then
+    PYTHON_BIN="$REPO_DIR/.venv-templar-node/bin/python"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
+
+if [ -z "${DATABASE_MODE:-}" ] && command -v docker >/dev/null 2>&1; then
+  DB_HOST="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' remnawave_bot_db 2>/dev/null | sed -n '1p')"
+  if [ -n "$DB_HOST" ]; then
+    export DATABASE_MODE=postgresql
+    export POSTGRES_HOST="$DB_HOST"
+    export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+  fi
+fi
+
+cd "$REPO_DIR"
+exec "$PYTHON_BIN" "$CLI_PATH" "$@"

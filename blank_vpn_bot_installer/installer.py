@@ -26,8 +26,8 @@ except ModuleNotFoundError:
     from blank_vpn_bot_installer.templates import caddyfile, landing_html
 
 
-DEFAULT_SOURCE_REPO = "git@github.com:cinemabit55/templarvpn.git"
 DEFAULT_SOURCE_REF = "main"
+BUNDLED_BOT_SOURCE_DIR = Path(__file__).resolve().parents[1] / "bot-source"
 DEFAULT_BOT_DIR = Path("/opt/bedolaga")
 DEFAULT_REMNAWAVE_DIR = Path("/opt/remnawave")
 DEFAULT_CADDY_DIR = Path("/opt/caddy-remnawave")
@@ -110,6 +110,30 @@ def mark(ctx: InstallerContext, key: str, value: Any = True) -> None:
 def random_secret(length: int = 48) -> str:
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def random_remnawave_admin_password(length: int = 32) -> str:
+    alphabet = string.ascii_letters + string.digits
+    required = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+    ]
+    rest = [secrets.choice(alphabet) for _ in range(max(length, 24) - len(required))]
+    chars = required + rest
+    secrets.SystemRandom().shuffle(chars)
+    return "".join(chars)
+
+
+def validate_remnawave_admin_password(password: str) -> None:
+    if len(password) < 24:
+        die("RemnaWave admin password must be at least 24 characters long")
+    if not any(char.isupper() for char in password):
+        die("RemnaWave admin password must contain an uppercase letter")
+    if not any(char.islower() for char in password):
+        die("RemnaWave admin password must contain a lowercase letter")
+    if not any(char.isdigit() for char in password):
+        die("RemnaWave admin password must contain a digit")
 
 
 def random_hex(bytes_len: int = 32) -> str:
@@ -225,8 +249,21 @@ def preflight(ctx: InstallerContext) -> None:
 
 def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     status("collecting install answers")
-    source_repo = prompt(ctx, "source_repo", "Bot source repository", DEFAULT_SOURCE_REPO)
-    source_ref = prompt(ctx, "source_ref", "Bot source ref/branch/tag", DEFAULT_SOURCE_REF)
+    source_mode = choice(
+        ctx,
+        "source_mode",
+        "Bot source",
+        [
+            ("bundled", "bundled bot-source from this installer repository"),
+            ("git", "external Git repository"),
+        ],
+        "bundled",
+    )
+    source_repo = ""
+    source_ref = DEFAULT_SOURCE_REF
+    if source_mode == "git":
+        source_repo = prompt(ctx, "source_repo", "Bot source repository URL")
+        source_ref = prompt(ctx, "source_ref", "Bot source ref/branch/tag", DEFAULT_SOURCE_REF)
     install_root = Path(prompt(ctx, "install_root", "Install root", "/opt"))
     project_name = prompt(ctx, "project_name", "Project display name", "VPN Service")
 
@@ -272,15 +309,27 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     )
 
     stars_rate = prompt(ctx, "telegram_stars_rate_rub", "Telegram Stars RUB rate", "1.3")
+    remnawave_admin_username = prompt(ctx, "remnawave_admin_username", "RemnaWave admin username", "admin")
+    remnawave_admin_password = prompt(
+        ctx,
+        "remnawave_admin_password",
+        "RemnaWave admin password (empty = generate)",
+        "",
+        secret=True,
+    )
+    if not remnawave_admin_password:
+        remnawave_admin_password = random_remnawave_admin_password()
+    validate_remnawave_admin_password(remnawave_admin_password)
     remnawave_api_key = prompt(
         ctx,
         "remnawave_api_key",
-        "RemnaWave API token (empty = fill later in /opt/bedolaga/.env)",
+        "Existing RemnaWave API token (empty = installer creates it)",
         "",
         secret=True,
     )
 
     return {
+        "source_mode": source_mode,
         "source_repo": source_repo,
         "source_ref": source_ref,
         "bot_dir": str(install_root / "bedolaga"),
@@ -304,6 +353,8 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
         "support_username": support_username,
         "support_mode": support_mode,
         "telegram_stars_rate_rub": stars_rate,
+        "remnawave_admin_username": remnawave_admin_username,
+        "remnawave_admin_password": remnawave_admin_password,
         "remnawave_api_key": remnawave_api_key,
         "postgres_password": random_secret(32),
         "remnawave_postgres_password": random_secret(32),
@@ -318,10 +369,28 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     }
 
 
+def prepare_bot_source(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    if cfg["source_mode"] == "bundled":
+        install_bundled_bot_source(ctx, cfg)
+        return
+    git_clone_or_update(ctx, cfg)
+
+
+def install_bundled_bot_source(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    bot_dir = Path(cfg["bot_dir"])
+    status(f"using bundled bot source: {BUNDLED_BOT_SOURCE_DIR}")
+    if not ctx.dry_run and not BUNDLED_BOT_SOURCE_DIR.exists():
+        die(f"Bundled bot source is missing: {BUNDLED_BOT_SOURCE_DIR}")
+    copy_tree(BUNDLED_BOT_SOURCE_DIR, bot_dir, dry_run=ctx.dry_run)
+    mark(ctx, "bot_source_ready", {"mode": "bundled"})
+
+
 def git_clone_or_update(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     bot_dir = Path(cfg["bot_dir"])
     repo = cfg["source_repo"]
     ref = cfg["source_ref"]
+    if not repo:
+        die("Bot source repository URL is required when source_mode=git")
 
     status("checking bot source repository access")
     probe = run(["git", "ls-remote", "--heads", "--tags", repo], dry_run=ctx.dry_run, check=False, capture=True)
@@ -338,7 +407,7 @@ def git_clone_or_update(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         bot_dir.parent.mkdir(parents=True, exist_ok=True)
         run(["git", "clone", repo, str(bot_dir)], dry_run=ctx.dry_run)
         run(["git", "checkout", ref], cwd=bot_dir, dry_run=ctx.dry_run)
-    mark(ctx, "bot_repo_ready", True)
+    mark(ctx, "bot_source_ready", {"mode": "git", "repo": repo, "ref": ref})
 
 
 def write_file(path: Path, content: str, *, mode: int = 0o644, dry_run: bool = False) -> None:
@@ -574,20 +643,143 @@ def open_firewall(ctx: InstallerContext) -> None:
     run(["ufw", "allow", "443/udp"], dry_run=ctx.dry_run, check=False)
 
 
-def docker_up(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+def docker_up_remnawave(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     if ctx.skip_docker_up:
         warn("Skipping docker compose up")
         return
     remnawave_dir = Path(cfg["remnawave_dir"])
+
+    run(["docker", "compose", "up", "-d", "remnawave"], cwd=remnawave_dir, dry_run=ctx.dry_run)
+    mark(ctx, "remnawave_docker_up", True)
+
+
+def remnawave_request(
+    method: str,
+    path: str,
+    *,
+    payload: dict[str, Any] | None = None,
+    bearer: str | None = None,
+    timeout: int = 20,
+) -> dict[str, Any]:
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    if bearer:
+        headers["Authorization"] = f"Bearer {bearer}"
+    request = urllib.request.Request(
+        f"http://127.0.0.1:3000{path}",
+        data=data,
+        method=method,
+        headers=headers,
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        raw = response.read().decode("utf-8")
+    return json.loads(raw) if raw else {}
+
+
+def response_value(response: dict[str, Any], *path: str) -> Any:
+    current: Any = response
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def wait_for_remnawave_api(ctx: InstallerContext) -> dict[str, Any] | None:
+    if ctx.dry_run or ctx.skip_docker_up:
+        return None
+    status("waiting for RemnaWave API")
+    last_error = ""
+    for _ in range(120):
+        try:
+            return remnawave_request("GET", "/api/auth/status", timeout=5)
+        except Exception as exc:
+            last_error = str(exc)
+            time.sleep(5)
+    die(f"RemnaWave API did not become ready within 10 minutes: {last_error}")
+
+
+def remnawave_auth_jwt(cfg: dict[str, Any], status_response: dict[str, Any] | None) -> str:
+    username = cfg["remnawave_admin_username"]
+    password = cfg["remnawave_admin_password"]
+    is_register_allowed = bool(response_value(status_response or {}, "response", "isRegisterAllowed"))
+
+    if is_register_allowed:
+        status("registering RemnaWave admin")
+        try:
+            registered = remnawave_request(
+                "POST",
+                "/api/auth/register",
+                payload={"username": username, "password": password},
+            )
+            access_token = response_value(registered, "response", "accessToken")
+            if access_token:
+                return str(access_token)
+        except urllib.error.HTTPError as exc:
+            warn(f"RemnaWave admin registration failed with HTTP {exc.code}; trying login")
+
+    status("logging in to RemnaWave admin")
+    logged_in = remnawave_request(
+        "POST",
+        "/api/auth/login",
+        payload={"username": username, "password": password},
+    )
+    access_token = response_value(logged_in, "response", "accessToken")
+    if not access_token:
+        die("RemnaWave login did not return accessToken")
+    return str(access_token)
+
+
+def bootstrap_remnawave_api_token(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    if cfg["remnawave_api_key"]:
+        status("using existing RemnaWave API token")
+        return
+    if ctx.dry_run or ctx.skip_docker_up:
+        status("dry-run/skip: would create RemnaWave admin and API token")
+        return
+
+    status("bootstrapping RemnaWave API token")
+    status_response = wait_for_remnawave_api(ctx)
+    admin_jwt = remnawave_auth_jwt(cfg, status_response)
+    token_response = remnawave_request(
+        "POST",
+        "/api/tokens",
+        payload={"tokenName": "blank-vpn-bot-installer"},
+        bearer=admin_jwt,
+    )
+    api_token = response_value(token_response, "response", "token")
+    if not api_token:
+        die("RemnaWave API token creation did not return token")
+
+    cfg["remnawave_api_key"] = str(api_token)
+    write_file(Path(cfg["bot_dir"]) / ".env", bot_env(cfg), mode=0o600, dry_run=ctx.dry_run)
+    write_file(
+        Path(cfg["remnawave_dir"]) / ".env.subscription",
+        remnawave_subscription_env(cfg),
+        mode=0o600,
+        dry_run=ctx.dry_run,
+    )
+    save_json(Path("/opt/blank-vpn-bot-installer/answers.last.json"), cfg)
+    mark(ctx, "remnawave_api_token_created", True)
+
+
+def docker_up_application(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    if ctx.skip_docker_up:
+        warn("Skipping application docker compose up")
+        return
     bot_dir = Path(cfg["bot_dir"])
+    remnawave_dir = Path(cfg["remnawave_dir"])
     cabinet_dir = Path(cfg["cabinet_dir"])
     caddy_dir = Path(cfg["caddy_dir"])
 
-    run(["docker", "compose", "up", "-d"], cwd=remnawave_dir, dry_run=ctx.dry_run)
+    run(["docker", "compose", "up", "-d", "remnawave-subscription-page"], cwd=remnawave_dir, dry_run=ctx.dry_run)
     run(["docker", "compose", "up", "-d", "--build"], cwd=bot_dir, dry_run=ctx.dry_run)
     run(["docker", "compose", "up", "-d", "--build"], cwd=cabinet_dir, dry_run=ctx.dry_run)
     run(["docker", "compose", "up", "-d"], cwd=caddy_dir, dry_run=ctx.dry_run)
-    mark(ctx, "docker_up", True)
+    mark(ctx, "application_docker_up", True)
 
 
 def install_aliases(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
@@ -719,12 +911,14 @@ def wait_for_health(ctx: InstallerContext) -> None:
 
 
 def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
-    needs_remnawave_token = not bool(cfg["remnawave_api_key"])
+    bot_source = "bundled bot-source"
+    if cfg["source_mode"] == "git":
+        bot_source = f"{cfg['source_repo']} @ {cfg['source_ref']}"
     lines = [
         "Blank VPN bot install summary",
         "=============================",
         "",
-        f"Bot repo: {cfg['source_repo']} @ {cfg['source_ref']}",
+        f"Bot source: {bot_source}",
         f"Bot dir: {cfg['bot_dir']}",
         f"RemnaWave dir: {cfg['remnawave_dir']}",
         f"Caddy dir: {cfg['caddy_dir']}",
@@ -739,6 +933,8 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         f"Support: {cfg['support_username']} ({cfg['support_mode']})",
         "Default payment: Telegram Stars",
         "",
+        f"RemnaWave admin: {cfg['remnawave_admin_username']} / {cfg['remnawave_admin_password']}",
+        f"RemnaWave API token: {cfg['remnawave_api_key'] or 'not created because docker startup was skipped'}",
         f"Bot Web API token: {cfg['web_api_token']}",
         f"RemnaWave metrics: {cfg['metrics_user']} / {cfg['metrics_pass']}",
         "",
@@ -748,17 +944,6 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         "  add_direct, add_cascade, add_inbound, add_routes, delete_node, change_sni",
         "",
     ]
-    if needs_remnawave_token:
-        lines.extend(
-            [
-                "Action required:",
-                "  1. Open RemnaWave panel and create an API token.",
-                "  2. Put it into /opt/bedolaga/.env as REMNAWAVE_API_KEY.",
-                "  3. Put it into /opt/remnawave/.env.subscription as REMNAWAVE_API_TOKEN.",
-                "  4. Apply: cd /opt/bedolaga && docker compose up -d --force-recreate bot; cd /opt/remnawave && docker compose restart remnawave-subscription-page",
-                "",
-            ]
-        )
     lines.extend(
         [
             "DNS note:",
@@ -796,11 +981,13 @@ def main(argv: list[str] | None = None) -> int:
     cfg = collect_answers(ctx)
     save_json(Path("/opt/blank-vpn-bot-installer/answers.last.json"), cfg) if not ctx.dry_run else None
     setup_dns(ctx, cfg)
-    git_clone_or_update(ctx, cfg)
+    prepare_bot_source(ctx, cfg)
     write_configs(ctx, cfg)
     patch_caddy_compose(ctx, cfg)
     open_firewall(ctx)
-    docker_up(ctx, cfg)
+    docker_up_remnawave(ctx, cfg)
+    bootstrap_remnawave_api_token(ctx, cfg)
+    docker_up_application(ctx, cfg)
     install_aliases(ctx, cfg)
     install_installer_commands(ctx)
     wait_for_health(ctx)

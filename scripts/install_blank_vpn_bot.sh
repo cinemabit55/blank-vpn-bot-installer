@@ -10,6 +10,11 @@ log() {
   printf '[status] %s\n' "$*"
 }
 
+git_auth_args=()
+if [[ -n "${INSTALLER_GITHUB_TOKEN:-}" ]]; then
+  git_auth_args=(-c "http.extraHeader=Authorization: Bearer ${INSTALLER_GITHUB_TOKEN}")
+fi
+
 die() {
   printf 'ERROR: %s\n' "$*" >&2
   exit 1
@@ -43,12 +48,12 @@ docker compose version >/dev/null 2>&1 || die "docker compose plugin is required
 
 if [[ -d "$INSTALLER_DIR/.git" ]]; then
   log "Updating installer repo: $INSTALLER_DIR"
-  git -C "$INSTALLER_DIR" fetch --depth=1 origin "$INSTALLER_REF"
+  git "${git_auth_args[@]}" -C "$INSTALLER_DIR" fetch --depth=1 origin "$INSTALLER_REF"
   git -C "$INSTALLER_DIR" checkout -q FETCH_HEAD
 else
   log "Cloning installer repo: $INSTALLER_REPO_URL"
   rm -rf "$INSTALLER_DIR"
-  git clone --depth=1 --branch "$INSTALLER_REF" "$INSTALLER_REPO_URL" "$INSTALLER_DIR"
+  git "${git_auth_args[@]}" clone --depth=1 --branch "$INSTALLER_REF" "$INSTALLER_REPO_URL" "$INSTALLER_DIR"
 fi
 
 log "Starting Python installer"

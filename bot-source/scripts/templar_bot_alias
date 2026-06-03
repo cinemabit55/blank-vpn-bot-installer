@@ -1,0 +1,64 @@
+#!/usr/bin/env sh
+# Short command dispatcher for bot-level maintenance scripts.
+set -eu
+
+REPO_DIR="${TEMPLAR_BOT_REPO_DIR:-/opt/bedolaga}"
+BANNER_CLI_PATH="${TEMPLAR_BOT_BANNER_CLI:-$REPO_DIR/scripts/banner_admin.py}"
+COMMAND_NAME="$(basename "$0")"
+
+if [ -n "${TEMPLAR_BOT_PYTHON:-}" ]; then
+  PYTHON_BIN="$TEMPLAR_BOT_PYTHON"
+elif [ -x "$REPO_DIR/.venv-bot-tools/bin/python" ]; then
+  PYTHON_BIN="$REPO_DIR/.venv-bot-tools/bin/python"
+elif [ -x "$REPO_DIR/.venv/bin/python" ]; then
+  PYTHON_BIN="$REPO_DIR/.venv/bin/python"
+else
+  PYTHON_BIN="python3"
+fi
+
+print_commands() {
+  cat <<'COMMANDS'
+Templar bot shortcut commands:
+  add_banner       interactively replace a bot screen banner
+  set_banner       replace a banner non-interactively: set_banner SLOT LANG FILE
+  list_banners     show current banner files and Telegram cache path
+  reset_banner     remove selected banner file(s) after backup
+  bot_commands     show this help
+COMMANDS
+}
+
+case "$COMMAND_NAME" in
+  bot_commands|templar_bot_commands)
+    print_commands
+    exit 0
+    ;;
+  add_banner)
+    set -- set "$@"
+    ;;
+  set_banner)
+    set -- set "$@"
+    ;;
+  list_banners)
+    set -- list "$@"
+    ;;
+  reset_banner)
+    set -- reset "$@"
+    ;;
+  *)
+    echo "Unknown templar bot shortcut: $COMMAND_NAME" >&2
+    echo "Run bot_commands for the available shortcuts." >&2
+    exit 64
+    ;;
+esac
+
+if [ ! -f "$BANNER_CLI_PATH" ]; then
+  echo "Banner CLI not found: $BANNER_CLI_PATH" >&2
+  exit 66
+fi
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1 && [ ! -x "$PYTHON_BIN" ]; then
+  echo "Python executable not found: $PYTHON_BIN" >&2
+  exit 69
+fi
+
+cd "$REPO_DIR"
+exec "$PYTHON_BIN" "$BANNER_CLI_PATH" "$@"
