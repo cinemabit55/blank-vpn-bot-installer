@@ -18,7 +18,6 @@
 - Markdown and PDF operator manual.
 - Neutral generated banner pack for blank installs.
 - Non-destructive source sync on installer reruns.
-- `backup_install` helper for config/env archives and optional SQL dumps.
 - `add_payment` helper:
   - provider choice;
   - required credential prompts;
@@ -29,4 +28,3 @@
 ## Next
 
 - Safer resume system with per-step idempotency checks beyond source sync.
-- Restore helper for backups.

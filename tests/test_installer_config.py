@@ -25,19 +25,8 @@ def _load_payment_admin():
     return module
 
 
-def _load_backup_admin():
-    path = Path(__file__).resolve().parents[1] / 'blank_vpn_bot_installer' / 'backup_admin.py'
-    spec = importlib.util.spec_from_file_location('backup_admin', path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
 installer = _load_installer()
 payment_admin = _load_payment_admin()
-backup_admin = _load_backup_admin()
 from blank_vpn_bot_installer.banner_pack import banner_targets, install_default_banners
 
 
@@ -215,32 +204,3 @@ def test_bundled_shortcut_help_is_unbranded() -> None:
     for path in user_visible_files:
         assert 'Templar' not in path.read_text(encoding='utf-8')
 
-
-def test_backup_archive_includes_static_install_files(tmp_path: Path) -> None:
-    bot_dir = tmp_path / 'bedolaga'
-    remnawave_dir = tmp_path / 'remnawave'
-    caddy_dir = tmp_path / 'caddy-remnawave'
-    cabinet_dir = tmp_path / 'cabinet'
-    state_dir = tmp_path / 'state'
-    for path in (bot_dir, remnawave_dir, caddy_dir, cabinet_dir, state_dir):
-        path.mkdir()
-    (bot_dir / '.env').write_text('BOT_TOKEN=token\n', encoding='utf-8')
-    (remnawave_dir / '.env').write_text('POSTGRES_DB=postgres\n', encoding='utf-8')
-    (caddy_dir / 'Caddyfile').write_text('example.com {}\n', encoding='utf-8')
-    (cabinet_dir / '.env').write_text('VITE_APP_NAME=VPN\n', encoding='utf-8')
-    (state_dir / 'install-summary.txt').write_text('summary\n', encoding='utf-8')
-
-    archive = backup_admin.create_backup(
-        backup_admin.BackupPaths(
-            bot_dir=bot_dir,
-            remnawave_dir=remnawave_dir,
-            caddy_dir=caddy_dir,
-            cabinet_dir=cabinet_dir,
-            state_dir=state_dir,
-            output_dir=tmp_path / 'backups',
-        ),
-        skip_db=True,
-    )
-
-    assert archive.exists()
-    assert archive.stat().st_mode & 0o777 == 0o600

@@ -120,7 +120,6 @@ RemnaWave admin login/password и API token будут в финальном ф�
 
 ```text
 add_payment      добавить платежный метод
-backup_install   создать backup env/config/state и SQL dump баз
 add_banner       интерактивно заменить баннер
 set_banner       заменить баннер одной командой
 list_banners     показать установленные баннеры
@@ -196,23 +195,7 @@ list_banners
 
 Языки: `ru`, `en`, `fallback`, `all`.
 
-## 9. Backup
-
-Перед крупными изменениями можно сделать архив:
-
-```bash
-backup_install
-```
-
-По умолчанию в архив попадают env-файлы, Caddyfile, installer state/summary и SQL dump баз, если Docker-контейнеры доступны. Архив сохраняется в `/opt/blank-vpn-bot-installer/backups` и доступен только root.
-
-Чтобы добавить runtime-файлы бота:
-
-```bash
-backup_install --include-runtime
-```
-
-## 10. Добавление серверов
+## 9. Добавление серверов
 
 Для нового пустого бота сначала нужно поднять сам control-plane, затем добавлять ноды алиасами.
 
@@ -252,7 +235,7 @@ delete_node
 change_sni
 ```
 
-## 11. Проверка после установки
+## 10. Проверка после установки
 
 Проверь:
 
@@ -270,7 +253,7 @@ cd /opt/remnawave && docker compose logs -f
 cd /opt/caddy-remnawave && docker compose logs -f
 ```
 
-## 12. Типовые проблемы
+## 11. Типовые проблемы
 
 Если панель или подписка не открываются, сначала проверь DNS и Cloudflare proxy mode. `sub` должен быть DNS-only.
 

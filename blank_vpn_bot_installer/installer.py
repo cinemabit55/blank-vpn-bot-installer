@@ -817,23 +817,21 @@ def install_aliases(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
 def install_installer_commands(ctx: InstallerContext) -> None:
     status("installing installer helper commands")
     if ctx.dry_run:
-        for name in ("add_payment", "backup_install"):
-            status(f"write {INSTALLER_COMMAND_BIN_DIR / name}")
+        status(f"write {INSTALLER_COMMAND_BIN_DIR / 'add_payment'}")
         return
 
     INSTALLER_COMMAND_LIB_DIR.mkdir(parents=True, exist_ok=True)
-    for module_name, command_name in (("payment_admin.py", "add_payment"), ("backup_admin.py", "backup_install")):
-        source = Path(__file__).resolve().parent / module_name
-        target = INSTALLER_COMMAND_LIB_DIR / module_name
-        wrapper = INSTALLER_COMMAND_BIN_DIR / command_name
-        shutil.copy2(source, target)
-        target.chmod(0o755)
-        wrapper.write_text(
-            "#!/usr/bin/env sh\n"
-            f'exec python3 "{target}" "$@"\n',
-            encoding="utf-8",
-        )
-        wrapper.chmod(0o755)
+    source = Path(__file__).resolve().parent / "payment_admin.py"
+    target = INSTALLER_COMMAND_LIB_DIR / "payment_admin.py"
+    wrapper = INSTALLER_COMMAND_BIN_DIR / "add_payment"
+    shutil.copy2(source, target)
+    target.chmod(0o755)
+    wrapper.write_text(
+        "#!/usr/bin/env sh\n"
+        f'exec python3 "{target}" "$@"\n',
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o755)
     mark(ctx, "installer_commands_installed", True)
 
 
@@ -951,7 +949,6 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         "",
         "Installed commands:",
         "  add_payment",
-        "  backup_install",
         "  add_banner, list_banners, reset_banner",
         "  add_direct, add_cascade, add_inbound, add_routes, delete_node, change_sni",
         "",
