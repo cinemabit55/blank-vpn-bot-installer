@@ -38,6 +38,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Neutral default banner pack for the bot screens
 - Non-destructive source sync on reruns, preserving runtime `data`, `logs`, and uploads
 - Payment alias: `add_payment`
+- Backup alias: `backup_install`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`
 
@@ -111,6 +112,16 @@ The command asks for the provider, button display name, required API credentials
 - enables the provider in `payment_method_configs` when the database table is available.
 
 Supported methods include YooKassa, CryptoBot, Heleket, MulenPay, PAL24, Platega, WATA, CloudPayments, Freekassa, KassaAI, RioPay, SeverPay, PayPear, RollyPay, Overpay, AuraPay, Tribute, and Telegram Stars.
+
+## Backups
+
+Create a root-only backup archive with env files, installer state, Caddy config, and SQL dumps when Docker is available:
+
+```bash
+backup_install
+```
+
+Use `backup_install --include-runtime` to also include bot `data`, `uploads`, and banner files.
 
 ## Non-Interactive Answers
 
