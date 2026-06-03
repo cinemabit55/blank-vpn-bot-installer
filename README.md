@@ -25,6 +25,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Caddy reverse proxy in `/opt/caddy-remnawave`
 - Cabinet frontend in `/opt/cabinet`
 - Telegram Stars as the only enabled payment method by default
+- Payment alias: `add_payment`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`
 
@@ -80,6 +81,23 @@ cd /opt/bedolaga && docker compose restart bot
 cd /opt/remnawave && docker compose restart remnawave-subscription-page
 ```
 
+## Adding Payment Methods
+
+After installation, Telegram Stars is enabled by default. To add another provider:
+
+```bash
+add_payment
+```
+
+The command asks for the provider, button display name, required API credentials, optional redirect URLs, then:
+
+- backs up `/opt/bedolaga/.env`;
+- writes provider env vars;
+- recreates the bot container so new env vars are applied;
+- enables the provider in `payment_method_configs` when the database table is available.
+
+Supported methods include YooKassa, CryptoBot, Heleket, MulenPay, PAL24, Platega, WATA, CloudPayments, Freekassa, KassaAI, RioPay, SeverPay, PayPear, RollyPay, Overpay, AuraPay, Tribute, and Telegram Stars.
+
 ## Non-Interactive Answers
 
 You can pass a JSON file:
@@ -90,11 +108,22 @@ sudo python3 blank_vpn_bot_installer/installer.py --answers answers.example.json
 
 See [docs/answers.example.json](docs/answers.example.json).
 
+## Operator Manual
+
+- Markdown: [docs/operator-manual.md](docs/operator-manual.md)
+- PDF: [docs/operator-manual.pdf](docs/operator-manual.pdf)
+
+Rebuild the PDF after editing the Markdown:
+
+```bash
+python3 scripts/build_manual_pdf.py
+```
+
 ## Current MVP Limits
 
-- `add_payment` is not implemented in this installer repo yet.
 - RemnaWave API token creation is not automated yet.
 - Cloudflare DNS upsert is implemented for A records, but advanced domain/proxy policy still needs a dedicated module.
 - The bot source repository must be available to the target server.
+- Neutral generated banner pack is not implemented yet; use `add_banner` to upload operator-provided images.
 
 These are the next modules after the base install flow.

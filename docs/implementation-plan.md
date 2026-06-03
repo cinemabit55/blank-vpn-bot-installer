@@ -13,18 +13,17 @@
 - Docker Compose startup sequence.
 - Bot and node alias installation.
 - Root-only install summary.
+- Markdown and PDF operator manual.
+- `add_payment` helper:
+  - provider choice;
+  - required credential prompts;
+  - `.env` backup/update;
+  - bot container recreate so env changes apply;
+  - `PaymentMethodConfig` visibility update when the table exists.
 
 ## Next
 
-- `add_payment` command:
-  - provider choice;
-  - required secret prompts;
-  - `.env` update;
-  - `PaymentMethodConfig` update in DB;
-  - bot restart;
-  - method visibility smoke test.
 - RemnaWave API token automation or guided pause after panel bootstrap.
 - Default neutral banners for blank installs.
-- Markdown and PDF operator manual.
 - Safer resume system with per-step idempotency checks.
 - Optional backup/restore module for new blank installs.

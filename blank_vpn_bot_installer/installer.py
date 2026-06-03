@@ -32,6 +32,8 @@ DEFAULT_BOT_DIR = Path("/opt/bedolaga")
 DEFAULT_REMNAWAVE_DIR = Path("/opt/remnawave")
 DEFAULT_CADDY_DIR = Path("/opt/caddy-remnawave")
 DEFAULT_CABINET_DIR = Path("/opt/cabinet")
+INSTALLER_COMMAND_LIB_DIR = Path("/usr/local/lib/blank-vpn-bot-installer")
+INSTALLER_COMMAND_BIN_DIR = Path("/usr/local/bin")
 STATE_PATH = Path("/opt/blank-vpn-bot-installer/state.json")
 SUMMARY_PATH = Path("/opt/blank-vpn-bot-installer/install-summary.txt")
 
@@ -609,6 +611,29 @@ def install_aliases(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     mark(ctx, "aliases_installed", True)
 
 
+def install_installer_commands(ctx: InstallerContext) -> None:
+    source = Path(__file__).resolve().parent / "payment_admin.py"
+    target = INSTALLER_COMMAND_LIB_DIR / "payment_admin.py"
+    wrapper = INSTALLER_COMMAND_BIN_DIR / "add_payment"
+
+    status("installing installer helper commands")
+    if ctx.dry_run:
+        status(f"write {target}")
+        status(f"write {wrapper}")
+        return
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+    target.chmod(0o755)
+    wrapper.write_text(
+        "#!/usr/bin/env sh\n"
+        f'exec python3 "{target}" "$@"\n',
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o755)
+    mark(ctx, "installer_commands_installed", True)
+
+
 def cloudflare_request(token: str, method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = urllib.request.Request(
@@ -718,6 +743,7 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         f"RemnaWave metrics: {cfg['metrics_user']} / {cfg['metrics_pass']}",
         "",
         "Installed commands:",
+        "  add_payment",
         "  add_banner, list_banners, reset_banner",
         "  add_direct, add_cascade, add_inbound, add_routes, delete_node, change_sni",
         "",
@@ -729,7 +755,7 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
                 "  1. Open RemnaWave panel and create an API token.",
                 "  2. Put it into /opt/bedolaga/.env as REMNAWAVE_API_KEY.",
                 "  3. Put it into /opt/remnawave/.env.subscription as REMNAWAVE_API_TOKEN.",
-                "  4. Restart: cd /opt/bedolaga && docker compose restart bot; cd /opt/remnawave && docker compose restart remnawave-subscription-page",
+                "  4. Apply: cd /opt/bedolaga && docker compose up -d --force-recreate bot; cd /opt/remnawave && docker compose restart remnawave-subscription-page",
                 "",
             ]
         )
@@ -776,6 +802,7 @@ def main(argv: list[str] | None = None) -> int:
     open_firewall(ctx)
     docker_up(ctx, cfg)
     install_aliases(ctx, cfg)
+    install_installer_commands(ctx)
     wait_for_health(ctx)
     write_summary(ctx, cfg)
     status("install flow completed")

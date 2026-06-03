@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+
+exec python3 "$REPO_DIR/blank_vpn_bot_installer/payment_admin.py" "$@"

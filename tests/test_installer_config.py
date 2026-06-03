@@ -15,7 +15,18 @@ def _load_installer():
     return module
 
 
+def _load_payment_admin():
+    path = Path(__file__).resolve().parents[1] / 'blank_vpn_bot_installer' / 'payment_admin.py'
+    spec = importlib.util.spec_from_file_location('payment_admin', path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 installer = _load_installer()
+payment_admin = _load_payment_admin()
 
 
 CFG = {
@@ -81,3 +92,44 @@ def test_caddyfile_contains_happ_headers() -> None:
     assert 'fragmentation-enable 1' in rendered
     assert 'no-limit-xhttp-enabled 1' in rendered
     assert 'https://sub.example.com' in rendered
+
+
+def test_payment_provider_defaults_include_yookassa_urls() -> None:
+    env = {
+        'WEBHOOK_URL': 'https://api.example.com',
+        'CABINET_URL': 'https://cabinet.example.com',
+    }
+    providers = payment_admin.build_providers(env)
+    yookassa = providers['yookassa']
+
+    assert yookassa.enabled_key == 'YOOKASSA_ENABLED'
+    assert yookassa.sub_options == {'card': True, 'sbp': True}
+    assert any(field.key == 'YOOKASSA_RETURN_URL' and field.default == 'https://cabinet.example.com' for field in yookassa.fields)
+
+
+def test_update_env_file_preserves_existing_lines(tmp_path: Path) -> None:
+    env_path = tmp_path / '.env'
+    env_path.write_text('BOT_TOKEN=token\nYOOKASSA_ENABLED=false\n# keep me\n', encoding='utf-8')
+
+    backup = payment_admin.update_env_file(
+        env_path,
+        {
+            'YOOKASSA_ENABLED': 'true',
+            'YOOKASSA_SHOP_ID': 'shop',
+        },
+    )
+
+    rendered = env_path.read_text(encoding='utf-8')
+    assert backup.exists()
+    assert 'YOOKASSA_ENABLED=true' in rendered
+    assert 'YOOKASSA_SHOP_ID=shop' in rendered
+    assert '# keep me' in rendered
+
+
+def test_payment_config_sql_enables_method() -> None:
+    providers = payment_admin.build_providers({})
+    sql = payment_admin.payment_config_sql(providers['cryptobot'], 'CryptoBot')
+
+    assert "method_id = 'cryptobot'" in sql
+    assert 'is_enabled = TRUE' in sql
+    assert "display_name = 'CryptoBot'" in sql
