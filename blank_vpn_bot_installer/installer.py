@@ -20,9 +20,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from blank_vpn_bot_installer.banner_pack import install_default_banners
     from blank_vpn_bot_installer.templates import caddyfile, landing_html
 except ModuleNotFoundError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from blank_vpn_bot_installer.banner_pack import install_default_banners
     from blank_vpn_bot_installer.templates import caddyfile, landing_html
 
 
@@ -625,6 +627,17 @@ def write_configs(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     mark(ctx, "configs_written", True)
 
 
+def install_default_banner_pack(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    count = install_default_banners(
+        Path(cfg["bot_dir"]),
+        cfg["project_name"],
+        dry_run=ctx.dry_run,
+        status=status,
+        warn=warn,
+    )
+    mark(ctx, "default_banners_installed", {"count": count})
+
+
 def patch_caddy_compose(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     path = Path(cfg["caddy_dir"]) / "docker-compose.yml"
     if ctx.dry_run:
@@ -983,6 +996,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_dns(ctx, cfg)
     prepare_bot_source(ctx, cfg)
     write_configs(ctx, cfg)
+    install_default_banner_pack(ctx, cfg)
     patch_caddy_compose(ctx, cfg)
     open_firewall(ctx)
     docker_up_remnawave(ctx, cfg)

@@ -30,6 +30,7 @@ if command -v apt-get >/dev/null 2>&1; then
   apt-get update
   apt-get install -y --no-install-recommends \
     ca-certificates curl git jq openssl python3 python3-venv rsync tar ufw
+  apt-get install -y --no-install-recommends python3-pil || true
   if ! command -v docker >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends docker.io
   fi

@@ -16,6 +16,7 @@
 - Bot and node alias installation.
 - Root-only install summary.
 - Markdown and PDF operator manual.
+- Neutral generated banner pack for blank installs.
 - `add_payment` helper:
   - provider choice;
   - required credential prompts;
@@ -25,6 +26,5 @@
 
 ## Next
 
-- Default neutral banners for blank installs.
 - Safer resume system with per-step idempotency checks.
 - Optional backup/restore module for new blank installs.

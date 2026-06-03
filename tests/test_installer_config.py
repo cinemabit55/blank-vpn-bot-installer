@@ -27,6 +27,7 @@ def _load_payment_admin():
 
 installer = _load_installer()
 payment_admin = _load_payment_admin()
+from blank_vpn_bot_installer.banner_pack import banner_targets, install_default_banners
 
 
 CFG = {
@@ -153,3 +154,14 @@ def test_response_value_extracts_remnawave_token() -> None:
     assert installer.response_value(response, 'response', 'token') == 'rw-token'
     assert installer.response_value(response, 'response', 'accessToken') == 'jwt-token'
     assert installer.response_value(response, 'missing', 'token') is None
+
+
+def test_default_banner_pack_targets_all_expected_files(tmp_path: Path) -> None:
+    targets = banner_targets()
+    filenames = {filename for _slot, _language, filename in targets}
+
+    assert len(targets) == 22
+    assert 'main_menu_ru.jpg' in filenames
+    assert 'profile_en.jpg' in filenames
+    assert 'welcome.jpg' in filenames
+    assert install_default_banners(tmp_path, 'VPN Service', dry_run=True) == 22

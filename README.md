@@ -35,6 +35,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Cabinet frontend in `/opt/cabinet`
 - RemnaWave admin account and API token
 - Telegram Stars as the only enabled payment method by default
+- Neutral default banner pack for the bot screens
 - Payment alias: `add_payment`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`
@@ -135,6 +136,6 @@ python3 scripts/build_manual_pdf.py
 
 - Cloudflare DNS upsert is implemented for A records, but advanced domain/proxy policy still needs a dedicated module.
 - External Git source mode requires repository access from the target server.
-- Neutral generated banner pack is not implemented yet; use `add_banner` to upload operator-provided images.
+- Default banners are intentionally neutral. Use `add_banner` to replace them with operator-provided images.
 
 These are the next modules after the base install flow.
