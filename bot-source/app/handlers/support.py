@@ -12,12 +12,11 @@ logger = structlog.get_logger(__name__)
 
 
 async def show_support_info(callback: types.CallbackQuery, db_user: User):
-    # TZ Templar VPN: текст экрана поддержки переопределён локально (фолбэк, переопределяемый через локаль)
     texts = get_texts(db_user.language)
     support_info = texts.t(
         'SUPPORT_INFO_TEMPLAR',
         (
-            '🛡 <b>Поддержка Templar VPN</b>\n\n'
+            '🛡 <b>Поддержка</b>\n\n'
             'Что-то не работает или есть вопрос? Напишите нам напрямую — на той стороне живой человек.\n\n'
             'Чтобы решить вопрос за один раз, сразу приложите:\n'
             '• устройство и ОС (iOS / Android / Windows / macOS)\n'

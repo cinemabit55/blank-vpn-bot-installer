@@ -226,6 +226,10 @@ class Settings(BaseSettings):
     # Only works when SALES_MODE='tariffs'
     MULTI_TARIFF_ENABLED: bool = False
     MAX_ACTIVE_SUBSCRIPTIONS: int = 10
+    DEFAULT_TARIFF_BOOTSTRAP_ENABLED: bool = True
+    DEFAULT_TARIFF_BASIC_NAME: str = 'Базовый'
+    DEFAULT_TARIFF_DARK_NAME: str = 'Темные списки'
+    DEFAULT_TARIFF_TRIAL_NAME: str = 'Триал'
 
     # ID тарифа для триала в режиме тарифов (0 = использовать стандартные настройки триала)
     # Если указан ID тарифа, параметры триала берутся из тарифа (traffic_limit_gb, device_limit, allowed_squads)

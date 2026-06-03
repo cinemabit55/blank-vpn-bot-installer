@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import importlib.util
 import sys
 from pathlib import Path
@@ -78,6 +80,10 @@ def test_support_mode_written_to_bot_env() -> None:
     assert 'SUPPORT_SYSTEM_MODE=both' in env
     assert 'TELEGRAM_STARS_ENABLED=true' in env
     assert 'YOOKASSA_ENABLED=false' in env
+    assert 'DEFAULT_TARIFF_BOOTSTRAP_ENABLED=true' in env
+    assert 'DEFAULT_TARIFF_BASIC_NAME=Базовый' in env
+    assert 'DEFAULT_TARIFF_DARK_NAME=Темные списки' in env
+    assert 'DEFAULT_TARIFF_TRIAL_NAME=Триал' in env
 
 
 def test_empty_remnawave_token_writes_explicit_placeholder() -> None:
@@ -96,6 +102,19 @@ def test_caddyfile_contains_happ_headers() -> None:
     assert 'fragmentation-enable 1' in rendered
     assert 'no-limit-xhttp-enabled 1' in rendered
     assert 'https://sub.example.com' in rendered
+
+
+def test_happ_routing_header_is_generated_from_structured_payload() -> None:
+    from blank_vpn_bot_installer.templates import HAPP_ROUTING_HEADER, happ_routing_payload
+
+    encoded = HAPP_ROUTING_HEADER.removeprefix('happ://routing/onadd/')
+    payload = json.loads(base64.b64decode(encoded).decode('utf-8'))
+
+    assert payload == happ_routing_payload()
+    assert 'geosite:category-ru' in payload['DirectSites']
+    assert 'domain:whoosh.bike' in payload['DirectSites']
+    assert 'geoip:ru' in payload['DirectIp']
+    assert payload['FakeDNS'] == 'false'
 
 
 def test_payment_provider_defaults_include_yookassa_urls() -> None:
@@ -176,6 +195,21 @@ def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     assert 'if config.warp.discord_direct:' in profile.read_text(encoding='utf-8')
 
 
+def test_bundled_bot_source_bootstraps_default_tariffs() -> None:
+    root = Path(__file__).resolve().parents[1]
+    config = root / 'bot-source' / 'app' / 'config.py'
+    tariff_crud = root / 'bot-source' / 'app' / 'database' / 'crud' / 'tariff.py'
+    config_text = config.read_text(encoding='utf-8')
+    tariff_text = tariff_crud.read_text(encoding='utf-8')
+
+    assert "DEFAULT_TARIFF_BOOTSTRAP_ENABLED: bool = True" in config_text
+    assert "DEFAULT_TARIFF_BASIC_NAME: str = 'Базовый'" in config_text
+    assert "DEFAULT_TARIFF_DARK_NAME: str = 'Темные списки'" in config_text
+    assert "DEFAULT_TARIFF_TRIAL_NAME: str = 'Триал'" in config_text
+    assert 'async def ensure_blank_default_tariffs' in tariff_text
+    assert "trial_name = settings.DEFAULT_TARIFF_TRIAL_NAME.strip() or 'Триал'" in tariff_text
+
+
 def test_copy_tree_preserves_existing_runtime_files(tmp_path: Path) -> None:
     src = tmp_path / 'src'
     dst = tmp_path / 'dst'
@@ -204,3 +238,88 @@ def test_bundled_shortcut_help_is_unbranded() -> None:
     for path in user_visible_files:
         assert 'Templar' not in path.read_text(encoding='utf-8')
 
+
+def test_bundled_user_visible_branding_is_neutralized() -> None:
+    root = Path(__file__).resolve().parents[1]
+    user_visible_files = [
+        root / 'bot-source' / 'Dockerfile',
+        root / 'bot-source' / 'main.py',
+        root / 'bot-source' / 'app' / 'middlewares' / 'global_error.py',
+        root / 'bot-source' / 'app' / 'services' / 'startup_notification_service.py',
+        root / 'bot-source' / 'app' / 'handlers' / 'support.py',
+        root / 'bot-source' / 'app' / 'localization' / 'default_locales' / 'ru.yml',
+        root / 'bot-source' / 'app' / 'localization' / 'default_locales' / 'en.yml',
+        root / 'bot-source' / 'app' / 'localization' / 'locales' / 'ru.json',
+        root / 'bot-source' / 'app' / 'localization' / 'locales' / 'en.json',
+    ]
+    forbidden = [
+        'Remnawave Bedolaga Bot',
+        'Bedolaga RemnaWave Bot',
+        'Templar VPN Support',
+        'Поддержка Templar VPN',
+        'Сообщить разработчику',
+        'Поставить звезду',
+    ]
+
+    for path in user_visible_files:
+        rendered = path.read_text(encoding='utf-8')
+        for phrase in forbidden:
+            assert phrase not in rendered
+
+
+def test_node_shortcut_prefers_dedicated_node_venv() -> None:
+    root = Path(__file__).resolve().parents[1]
+    alias = root / 'bot-source' / 'scripts' / 'templar_node_alias'
+    rendered = alias.read_text(encoding='utf-8')
+
+    assert 'PYTHON_BIN="${TEMPLAR_NODE_PYTHON:-$REPO_DIR/.venv-templar-node/bin/python}"' in rendered
+    assert 'if [ -x "$REPO_DIR/.venv/bin/python" ]; then' in rendered
+
+
+def test_preserved_or_generated_reuses_previous_secret() -> None:
+    ctx = installer.InstallerContext(previous_answers={'web_api_token': 'old-token'})
+
+    assert installer.preserved_or_generated(ctx, 'web_api_token', lambda: 'new-token') == 'old-token'
+
+
+def test_collect_answers_defaults_to_bundled_source_without_prompt() -> None:
+    answers = {
+        'install_root': '/opt',
+        'project_name': 'VPN Service',
+        'server_ip': '203.0.113.10',
+        'root_domain': 'example.com',
+        'panel_domain': 'panel.example.com',
+        'sub_domain': 'sub.example.com',
+        'cabinet_domain': 'cabinet.example.com',
+        'api_domain': 'api.example.com',
+        'le_email': 'admin@example.com',
+        'dns_mode': 'manual',
+        'bot_token': '123456:token',
+        'bot_username': 'vpn_bot',
+        'admin_ids': '123',
+        'support_username': '@support',
+        'support_mode': 'both',
+        'telegram_stars_rate_rub': '1.3',
+        'remnawave_admin_username': 'admin',
+        'remnawave_admin_password': 'GeneratedPassword1234567890',
+        'remnawave_api_key': '',
+    }
+    ctx = installer.InstallerContext(dry_run=True, answers=answers)
+
+    cfg = installer.collect_answers(ctx)
+
+    assert cfg['source_mode'] == 'bundled'
+    assert cfg['source_repo'] == ''
+    assert cfg['source_ref'] == 'main'
+
+
+def test_apply_previous_answers_policy_reuses_saved_answers(tmp_path: Path, monkeypatch) -> None:
+    answers_path = tmp_path / 'answers.last.json'
+    installer.save_json(answers_path, {'bot_token': 'old-token', 'web_api_token': 'old-web-token'})
+    monkeypatch.setattr(installer, 'ANSWERS_LAST_PATH', answers_path)
+    ctx = installer.InstallerContext()
+
+    installer.apply_previous_answers_policy(ctx, True)
+
+    assert ctx.answers['bot_token'] == 'old-token'
+    assert ctx.previous_answers['web_api_token'] == 'old-web-token'

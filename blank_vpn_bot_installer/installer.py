@@ -37,7 +37,9 @@ DEFAULT_CABINET_DIR = Path("/opt/cabinet")
 INSTALLER_COMMAND_LIB_DIR = Path("/usr/local/lib/blank-vpn-bot-installer")
 INSTALLER_COMMAND_BIN_DIR = Path("/usr/local/bin")
 STATE_PATH = Path("/opt/blank-vpn-bot-installer/state.json")
+ANSWERS_LAST_PATH = Path("/opt/blank-vpn-bot-installer/answers.last.json")
 SUMMARY_PATH = Path("/opt/blank-vpn-bot-installer/install-summary.txt")
+CADDY_IMAGE = "caddy:2.10.2"
 
 
 @dataclass
@@ -45,9 +47,14 @@ class InstallerContext:
     dry_run: bool = False
     skip_packages: bool = False
     skip_docker_up: bool = False
+    skip_validation: bool = False
     answers_file: Path | None = None
     answers: dict[str, Any] = field(default_factory=dict)
+    previous_answers: dict[str, Any] = field(default_factory=dict)
     state: dict[str, Any] = field(default_factory=dict)
+    source_mode: str | None = None
+    source_repo: str = ""
+    source_ref: str = DEFAULT_SOURCE_REF
 
 
 def status(message: str) -> None:
@@ -140,6 +147,17 @@ def validate_remnawave_admin_password(password: str) -> None:
 
 def random_hex(bytes_len: int = 32) -> str:
     return secrets.token_hex(bytes_len)
+
+
+def preserved_or_generated(ctx: InstallerContext, key: str, factory) -> str:
+    current = ctx.answers.get(key)
+    if current:
+        return str(current)
+    previous = ctx.previous_answers.get(key)
+    if previous:
+        status(f"preserving generated value: {key}")
+        return str(previous)
+    return str(factory())
 
 
 def normalize_domain(value: str) -> str:
@@ -251,21 +269,21 @@ def preflight(ctx: InstallerContext) -> None:
 
 def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     status("collecting install answers")
-    source_mode = choice(
-        ctx,
-        "source_mode",
-        "Bot source",
-        [
-            ("bundled", "bundled bot-source from this installer repository"),
-            ("git", "external Git repository"),
-        ],
-        "bundled",
+    source_mode = str(ctx.answers.get("source_mode") or ctx.source_mode or "bundled")
+    if source_mode not in {"bundled", "git"}:
+        die("source_mode must be bundled or git")
+    source_repo = str(ctx.answers.get("source_repo") or ctx.source_repo or "")
+    source_ref = str(ctx.answers.get("source_ref") or ctx.source_ref or DEFAULT_SOURCE_REF)
+    status(
+        "Bot source: bundled bot-source from this installer repository"
+        if source_mode == "bundled"
+        else f"Bot source: external Git repository ({source_repo or 'prompt required'})"
     )
-    source_repo = ""
-    source_ref = DEFAULT_SOURCE_REF
     if source_mode == "git":
-        source_repo = prompt(ctx, "source_repo", "Bot source repository URL")
-        source_ref = prompt(ctx, "source_ref", "Bot source ref/branch/tag", DEFAULT_SOURCE_REF)
+        if not source_repo:
+            source_repo = prompt(ctx, "source_repo", "Bot source repository URL")
+        if "source_ref" not in ctx.answers and not ctx.source_ref:
+            source_ref = prompt(ctx, "source_ref", "Bot source ref/branch/tag", DEFAULT_SOURCE_REF)
     install_root = Path(prompt(ctx, "install_root", "Install root", "/opt"))
     project_name = prompt(ctx, "project_name", "Project display name", "VPN Service")
 
@@ -312,15 +330,16 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
 
     stars_rate = prompt(ctx, "telegram_stars_rate_rub", "Telegram Stars RUB rate", "1.3")
     remnawave_admin_username = prompt(ctx, "remnawave_admin_username", "RemnaWave admin username", "admin")
+    previous_admin_password = str(ctx.previous_answers.get("remnawave_admin_password") or "")
     remnawave_admin_password = prompt(
         ctx,
         "remnawave_admin_password",
-        "RemnaWave admin password (empty = generate)",
+        "RemnaWave admin password (empty = keep existing/generate)",
         "",
         secret=True,
     )
     if not remnawave_admin_password:
-        remnawave_admin_password = random_remnawave_admin_password()
+        remnawave_admin_password = previous_admin_password or random_remnawave_admin_password()
     validate_remnawave_admin_password(remnawave_admin_password)
     remnawave_api_key = prompt(
         ctx,
@@ -329,6 +348,9 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
         "",
         secret=True,
     )
+    if not remnawave_api_key and ctx.previous_answers.get("remnawave_api_key"):
+        status("preserving existing RemnaWave API token")
+        remnawave_api_key = str(ctx.previous_answers["remnawave_api_key"])
 
     return {
         "source_mode": source_mode,
@@ -358,16 +380,16 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
         "remnawave_admin_username": remnawave_admin_username,
         "remnawave_admin_password": remnawave_admin_password,
         "remnawave_api_key": remnawave_api_key,
-        "postgres_password": random_secret(32),
-        "remnawave_postgres_password": random_secret(32),
-        "web_api_token": random_secret(48),
-        "web_api_hmac": random_secret(64),
-        "cabinet_jwt_secret": random_secret(64),
-        "remnawave_jwt_secret": random_hex(64),
-        "remnawave_api_tokens_secret": random_hex(64),
-        "remnawave_webhook_secret": random_secret(64),
-        "metrics_user": f"metrics_{secrets.token_hex(4)}",
-        "metrics_pass": random_secret(24),
+        "postgres_password": preserved_or_generated(ctx, "postgres_password", lambda: random_secret(32)),
+        "remnawave_postgres_password": preserved_or_generated(ctx, "remnawave_postgres_password", lambda: random_secret(32)),
+        "web_api_token": preserved_or_generated(ctx, "web_api_token", lambda: random_secret(48)),
+        "web_api_hmac": preserved_or_generated(ctx, "web_api_hmac", lambda: random_secret(64)),
+        "cabinet_jwt_secret": preserved_or_generated(ctx, "cabinet_jwt_secret", lambda: random_secret(64)),
+        "remnawave_jwt_secret": preserved_or_generated(ctx, "remnawave_jwt_secret", lambda: random_hex(64)),
+        "remnawave_api_tokens_secret": preserved_or_generated(ctx, "remnawave_api_tokens_secret", lambda: random_hex(64)),
+        "remnawave_webhook_secret": preserved_or_generated(ctx, "remnawave_webhook_secret", lambda: random_secret(64)),
+        "metrics_user": preserved_or_generated(ctx, "metrics_user", lambda: f"metrics_{secrets.token_hex(4)}"),
+        "metrics_pass": preserved_or_generated(ctx, "metrics_pass", lambda: random_secret(24)),
     }
 
 
@@ -485,6 +507,10 @@ def bot_env(cfg: dict[str, Any]) -> str:
             "SALES_MODE=tariffs",
             "MULTI_TARIFF_ENABLED=true",
             "MAX_ACTIVE_SUBSCRIPTIONS=10",
+            "DEFAULT_TARIFF_BOOTSTRAP_ENABLED=true",
+            "DEFAULT_TARIFF_BASIC_NAME=Базовый",
+            "DEFAULT_TARIFF_DARK_NAME=Темные списки",
+            "DEFAULT_TARIFF_TRIAL_NAME=Триал",
             "TRIAL_DURATION_DAYS=3",
             "TRIAL_TRAFFIC_LIMIT_GB=10",
             "TRIAL_DEVICE_LIMIT=1",
@@ -646,6 +672,52 @@ def patch_caddy_compose(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     path.write_text(raw, encoding="utf-8")
 
 
+def validate_generated_configs(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    if ctx.dry_run:
+        status("dry-run: would validate docker compose and Caddy config")
+        return
+    if ctx.skip_validation:
+        warn("Skipping generated config validation")
+        return
+
+    status("validating generated docker compose configs")
+    compose_dirs = [
+        Path(cfg["remnawave_dir"]),
+        Path(cfg["bot_dir"]),
+        Path(cfg["cabinet_dir"]),
+        Path(cfg["caddy_dir"]),
+    ]
+    for compose_dir in compose_dirs:
+        compose_file = compose_dir / "docker-compose.yml"
+        if compose_file.exists():
+            run(["docker", "compose", "config", "-q"], cwd=compose_dir)
+        else:
+            warn(f"Compose file not found, skipping validation: {compose_file}")
+
+    status("validating generated Caddyfile")
+    caddy_dir = Path(cfg["caddy_dir"])
+    (caddy_dir / "logs").mkdir(parents=True, exist_ok=True)
+    run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "-v",
+            f"{caddy_dir / 'Caddyfile'}:/etc/caddy/Caddyfile:ro",
+            "-v",
+            f"{caddy_dir / 'landing'}:/srv/landing:ro",
+            "-v",
+            f"{caddy_dir / 'logs'}:/var/log/caddy",
+            CADDY_IMAGE,
+            "caddy",
+            "validate",
+            "--config",
+            "/etc/caddy/Caddyfile",
+        ]
+    )
+    mark(ctx, "generated_configs_validated", True)
+
+
 def open_firewall(ctx: InstallerContext) -> None:
     if shutil.which("ufw") is None:
         return
@@ -773,7 +845,7 @@ def bootstrap_remnawave_api_token(ctx: InstallerContext, cfg: dict[str, Any]) ->
         mode=0o600,
         dry_run=ctx.dry_run,
     )
-    save_json(Path("/opt/blank-vpn-bot-installer/answers.last.json"), cfg)
+    save_json(ANSWERS_LAST_PATH, cfg)
     mark(ctx, "remnawave_api_token_created", True)
 
 
@@ -793,11 +865,61 @@ def docker_up_application(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     mark(ctx, "application_docker_up", True)
 
 
+def install_node_tools_venv(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    bot_dir = Path(cfg["bot_dir"])
+    venv_dir = bot_dir / ".venv-templar-node"
+    python_bin = venv_dir / "bin" / "python"
+    requirements = bot_dir / "requirements.txt"
+
+    status("installing node command Python environment")
+    run(["python3", "-m", "venv", str(venv_dir)], dry_run=ctx.dry_run)
+    run([str(python_bin), "-m", "pip", "install", "--upgrade", "pip"], dry_run=ctx.dry_run)
+    if requirements.exists() or ctx.dry_run:
+        run([str(python_bin), "-m", "pip", "install", "-r", str(requirements)], dry_run=ctx.dry_run)
+    else:
+        run(
+            [
+                str(python_bin),
+                "-m",
+                "pip",
+                "install",
+                "PyYAML>=6.0",
+                "pydantic>=2.0",
+                "pydantic-settings>=2.0",
+                "python-dotenv>=1.0",
+                "SQLAlchemy>=2.0",
+                "asyncpg>=0.29",
+                "aiohttp>=3.9",
+                "aiohttp-socks>=0.10",
+                "httpx[socks]>=0.27",
+                "redis>=5.0",
+                "structlog>=25.1",
+                "rich>=14.0",
+                "cryptography>=44.0",
+                "python-dateutil>=2.9",
+                "pytz>=2023.4",
+                "packaging>=24.0",
+            ],
+            dry_run=ctx.dry_run,
+        )
+    run(
+        [
+            str(python_bin),
+            "-c",
+            "import yaml, pydantic, sqlalchemy, asyncpg; from app.templar_node.cli import main; print('node tools ok')",
+        ],
+        cwd=bot_dir,
+        dry_run=ctx.dry_run,
+    )
+    mark(ctx, "node_tools_venv_installed", str(venv_dir))
+
+
 def install_aliases(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     bot_dir = Path(cfg["bot_dir"])
     node_installer = bot_dir / "scripts" / "install_templar_node_aliases.sh"
     bot_installer = bot_dir / "scripts" / "install_templar_bot_aliases.sh"
     if node_installer.exists() or ctx.dry_run:
+        install_node_tools_venv(ctx, cfg)
         run(["bash", str(node_installer), str(bot_dir)], dry_run=ctx.dry_run)
     else:
         warn(f"Node alias installer not found: {node_installer}")
@@ -969,10 +1091,34 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Install a blank VPN bot control-plane")
     parser.add_argument("--answers", type=Path, help="JSON answers file for non-interactive installs")
+    parser.add_argument("--reuse-answers", dest="reuse_answers", action="store_true", help="reuse saved answers.last.json")
+    parser.add_argument("--no-reuse-answers", dest="reuse_answers", action="store_false", help="ask questions again")
+    parser.set_defaults(reuse_answers=None)
+    parser.add_argument("--source-mode", choices=["bundled", "git"], help="bot source mode; default is bundled")
+    parser.add_argument("--source-repo", default="", help="external bot source Git URL when --source-mode=git")
+    parser.add_argument("--source-ref", default=DEFAULT_SOURCE_REF, help="external bot source ref when --source-mode=git")
     parser.add_argument("--dry-run", action="store_true", help="print actions without changing the system")
     parser.add_argument("--skip-packages", action="store_true", help="packages are handled by shell bootstrap")
     parser.add_argument("--skip-docker-up", action="store_true", help="write configs but do not start containers")
+    parser.add_argument("--skip-validation", action="store_true", help="skip docker compose and Caddy config validation")
     return parser
+
+
+def apply_previous_answers_policy(ctx: InstallerContext, reuse_answers: bool | None) -> None:
+    previous = load_json(ANSWERS_LAST_PATH)
+    ctx.previous_answers = previous
+    if ctx.answers_file or not previous:
+        return
+    should_reuse = reuse_answers
+    if should_reuse is None:
+        should_reuse = True
+        if sys.stdin.isatty():
+            should_reuse = yes_no(ctx, "reuse_previous_answers", f"Reuse previous install answers from {ANSWERS_LAST_PATH}", True)
+    if should_reuse:
+        ctx.answers = previous.copy()
+        status(f"using previous install answers: {ANSWERS_LAST_PATH}")
+    else:
+        status("previous install answers will only be used to preserve generated secrets")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -981,19 +1127,25 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         skip_packages=args.skip_packages,
         skip_docker_up=args.skip_docker_up,
+        skip_validation=args.skip_validation,
         answers_file=args.answers,
         answers=load_json(args.answers) if args.answers else {},
         state=load_json(STATE_PATH),
+        source_mode=args.source_mode,
+        source_repo=args.source_repo,
+        source_ref=args.source_ref,
     )
+    apply_previous_answers_policy(ctx, args.reuse_answers)
 
     preflight(ctx)
     cfg = collect_answers(ctx)
-    save_json(Path("/opt/blank-vpn-bot-installer/answers.last.json"), cfg) if not ctx.dry_run else None
+    save_json(ANSWERS_LAST_PATH, cfg) if not ctx.dry_run else None
     setup_dns(ctx, cfg)
     prepare_bot_source(ctx, cfg)
     write_configs(ctx, cfg)
     install_default_banner_pack(ctx, cfg)
     patch_caddy_compose(ctx, cfg)
+    validate_generated_configs(ctx, cfg)
     open_firewall(ctx)
     docker_up_remnawave(ctx, cfg)
     bootstrap_remnawave_api_token(ctx, cfg)

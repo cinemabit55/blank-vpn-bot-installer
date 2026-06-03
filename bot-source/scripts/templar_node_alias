@@ -3,7 +3,7 @@
 set -eu
 
 REPO_DIR="${TEMPLAR_NODE_REPO_DIR:-/opt/bedolaga}"
-PYTHON_BIN="${TEMPLAR_NODE_PYTHON:-$REPO_DIR/.venv/bin/python}"
+PYTHON_BIN="${TEMPLAR_NODE_PYTHON:-$REPO_DIR/.venv-templar-node/bin/python}"
 CLI_PATH="${TEMPLAR_NODE_CLI:-$REPO_DIR/scripts/templar_node.py}"
 COMMAND_NAME="$(basename "$0")"
 
@@ -180,8 +180,8 @@ if [ ! -f "$CLI_PATH" ]; then
   exit 66
 fi
 if [ ! -x "$PYTHON_BIN" ]; then
-  if [ -x "$REPO_DIR/.venv-templar-node/bin/python" ]; then
-    PYTHON_BIN="$REPO_DIR/.venv-templar-node/bin/python"
+  if [ -x "$REPO_DIR/.venv/bin/python" ]; then
+    PYTHON_BIN="$REPO_DIR/.venv/bin/python"
   else
     PYTHON_BIN="python3"
   fi

@@ -1,6 +1,6 @@
 # Blank VPN Bot Installer
 
-Installer for deploying a clean, unbranded VPN bot control-plane based on the Bedolaga/RemnaWave stack.
+Installer for deploying a clean, unbranded VPN bot control-plane for a RemnaWave-based setup.
 
 The installer is self-contained by default: it uses the bundled `bot-source/` snapshot, writes fresh production configuration, creates the RemnaWave admin/API token, starts Docker Compose stacks, installs maintenance aliases, and prints a root-only install summary.
 
@@ -34,20 +34,20 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Caddy reverse proxy in `/opt/caddy-remnawave`
 - Cabinet frontend in `/opt/cabinet`
 - RemnaWave admin account and API token
+- Default tariffs: `Базовый`, `Темные списки`, `Триал`
 - Telegram Stars as the only enabled payment method by default
 - Neutral default banner pack for the bot screens
 - Non-destructive source sync on reruns, preserving runtime `data`, `logs`, and uploads
 - Payment alias: `add_payment`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`
+- Dedicated node-command Python environment in `/opt/bedolaga/.venv-templar-node`
+- Generated Docker Compose and Caddy config validation before containers are started
 
 ## Required Input
 
 The installer asks for:
 
-- Bot source mode:
-  - bundled `bot-source/` from this installer repository
-  - optional external Git repository and branch/tag
 - Server IPv4
 - Root domain and generated subdomains:
   - `panel.example.com`
@@ -67,7 +67,13 @@ The installer asks for:
 - Optional RemnaWave admin password. If empty, the installer generates one.
 - Optional existing RemnaWave API token. If empty, the installer creates one automatically.
 
-If you choose external Git source mode and the bot source repository is private, the server must have access before the install starts. Use an SSH deploy key or an HTTPS URL with a token.
+The interactive installer uses the bundled `bot-source/` snapshot by default and does not ask the operator to choose a source repository. Advanced users can pass `--source-mode git --source-repo URL --source-ref BRANCH_OR_TAG`. If that external repository is private, the server must have access before the install starts through an SSH deploy key or an HTTPS URL/token.
+
+## Reruns
+
+The installer stores the last full answer set in `/opt/blank-vpn-bot-installer/answers.last.json`. On rerun without `--answers`, it offers to reuse those answers; in non-interactive mode it reuses them automatically. If you choose to answer questions again, generated secrets from the previous install are still preserved unless explicitly supplied in an answers file.
+
+Use `--no-reuse-answers` to force interactive questions again, or `--reuse-answers` to reuse the saved answers without prompting.
 
 ## DNS Rules
 
@@ -91,9 +97,20 @@ For normal installs the RemnaWave token step is automatic:
 3. Login with the configured admin credentials.
 4. Create a long-lived API token through `POST /api/tokens`.
 5. Write that token into `/opt/bedolaga/.env` and `/opt/remnawave/.env.subscription`.
-6. Start the bot, cabinet, subscription page, and Caddy.
+6. Validate generated Docker Compose files and the Caddyfile.
+7. Start the bot, cabinet, subscription page, and Caddy.
 
 The final root-only summary includes the RemnaWave panel URL, admin username/password, generated API token, metrics credentials, and bot Web API token.
+
+## Default Tariffs
+
+On first bot startup, the bundled bot creates three tariffs if they do not already exist:
+
+- `Базовый`
+- `Темные списки`
+- `Триал`
+
+Existing tariffs with those names are never overwritten. Node aliases attach new servers to these tariff names, so a fresh install can add the first node without manually creating tariffs in the cabinet.
 
 ## Adding Payment Methods
 

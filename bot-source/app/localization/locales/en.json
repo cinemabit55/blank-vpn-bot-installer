@@ -1790,7 +1790,7 @@
   "PRIVACY_POLICY_LINK_BUTTON": "🛡️ Privacy policy",
   "USER_AGREEMENT_LINK_BUTTON": "📄 User agreement",
   "REFERRAL_REWARDS_TEMPLAR": "🎁 <b>How it works:</b>\n• Your friend gets a <b>15% discount</b> on their first payment\n• You get <b>+5 days</b> of subscription for your friend's first payment\n• You get <b>+10% days</b> of subscription length from each of their next purchases",
-  "SUPPORT_INFO_TEMPLAR": "🛡 <b>Templar VPN Support</b>\n\nSomething not working or got a question? Message us directly — there's a real person on the other side.\n\nTo resolve your issue in one go, please attach:\n• device and OS (iOS / Android / Windows / macOS)\n• what exactly the problem is\n• a screenshot or the error text\n\nTap the button below — the chat will open.",
+  "SUPPORT_INFO_TEMPLAR": "🛡 <b>Support</b>\n\nSomething not working or got a question? Message us directly — there's a real person on the other side.\n\nTo resolve your issue in one go, please attach:\n• device and OS (iOS / Android / Windows / macOS)\n• what exactly the problem is\n• a screenshot or the error text\n\nTap the button below — the chat will open.",
   "APPS_SELECT_PROMPT": "📲 <b>Download app</b>\n\nChoose an app to connect to VPN:",
   "TARIFFS_HEADER": "📦 <b>Choose a plan</b>",
   "APP_NAME_HAPP": "📱 Happ (recommended)",

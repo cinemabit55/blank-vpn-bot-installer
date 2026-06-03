@@ -7,7 +7,7 @@ import structlog
 from aiogram import BaseMiddleware, Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, TelegramObject
+from aiogram.types import BufferedInputFile, CallbackQuery, TelegramObject
 from sqlalchemy.exc import InterfaceError, OperationalError
 
 from app.config import settings
@@ -24,7 +24,6 @@ ERROR_MESSAGE_MAX_LENGTH: Final[int] = 500
 REPORT_SEPARATOR_WIDTH: Final[int] = 50
 DATETIME_FORMAT: Final[str] = '%d.%m.%Y %H:%M:%S'
 DATETIME_FORMAT_FILENAME: Final[str] = '%Y%m%d_%H%M%S'
-DEVELOPER_CONTACT_URL: Final[str] = 'https://t.me/fringg'
 
 # Фразы ошибок Telegram API
 OLD_QUERY_PHRASES: Final[tuple[str, ...]] = (
@@ -292,7 +291,7 @@ async def send_error_to_admin_chat(
         caption_message_preview = _html_escape(caption_message_preview)
 
         message_text = (
-            f'<b>Remnawave Bedolaga Bot</b>\n\n'
+            f'<b>VPN Bot</b>\n\n'
             f'⚠️ Ошибка во время работы\n\n'
             f'<b>Тип:</b> <code>{error_type}</code>\n'
             f'<b>Сообщение:</b> <code>{caption_message_preview}</code>\n'
@@ -308,23 +307,11 @@ async def send_error_to_admin_chat(
 
         message_text += f'\n<i>{timestamp}</i>'
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text='💬 Сообщить разработчику',
-                        url=DEVELOPER_CONTACT_URL,
-                    ),
-                ],
-            ]
-        )
-
         message_kwargs: dict = {
             'chat_id': chat_id,
             'document': file,
             'caption': message_text,
             'parse_mode': ParseMode.HTML,
-            'reply_markup': keyboard,
         }
 
         if topic_id:

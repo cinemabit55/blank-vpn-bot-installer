@@ -1,24 +1,71 @@
 from __future__ import annotations
 
-HAPP_ROUTING_HEADER = (
-    "happ://routing/onadd/"
-    "eyJOYW1lIjoiUlUgRGlyZWN0IiwiR2xvYmFsUHJveHkiOiJ0cnVlIiwiUmVtb3RlRE5TVHlwZSI6IkRvSCIs"
-    "IlJlbW90ZUROU0RvbWFpbiI6Imh0dHBzOi8vY2xvdWRmbGFyZS1kbnMuY29tL2Rucy1xdWVyeSIs"
-    "IlJlbW90ZUROU0lQIjoiMS4xLjEuMSIsIkRvbWVzdGljRE5TVHlwZSI6IkRvSCIsIkRvbWVzdGljRE5T"
-    "RG9tYWluIjoiaHR0cHM6Ly9jb21tb24uZG90LmRucy55YW5kZXgubmV0L2Rucy1xdWVyeSIsIkRvbWVz"
-    "dGljRE5TSVAiOiI3Ny44OC44LjgiLCJEaXJlY3RTaXRlcyI6WyJnZW9zaXRlOmNhdGVnb3J5LXJ1Iiwi"
-    "ZG9tYWluOnZrLmNvbSIsImRvbWFpbjp2ay5ydSIsImRvbWFpbjp2a3ZpZGVvLnJ1IiwiZG9tYWluOm9r"
-    "LnJ1IiwiZG9tYWluOm1haWwucnUiLCJkb21haW46Z29zdXNsdWdpLnJ1IiwiZG9tYWluOm1vcy5ydSIs"
-    "ImRvbWFpbjpuYWxvZy5nb3YucnUiLCJkb21haW46c2JlcmJhbmsucnUiLCJkb21haW46c2Jlci5ydSIs"
-    "ImRvbWFpbjp0YmFuay5ydSIsImRvbWFpbjp0aW5rb2ZmLnJ1IiwiZG9tYWluOnZ0Yi5ydSIsImRvbWFp"
-    "bjphbGZhYmFuay5ydSIsImRvbWFpbjpnYXpwcm9tYmFuay5ydSIsImRvbWFpbjp5YW5kZXgucnUiLCJk"
-    "b21haW46eWFuZGV4Lm5ldCIsImRvbWFpbjp5YS5ydSIsImRvbWFpbjpvem9uLnJ1IiwiZG9tYWluOndp"
-    "bGRiZXJyaWVzLnJ1IiwiZG9tYWluOndob29zaC5iaWtlIiwiZG9tYWluOndob29zaC1iaWtlLnJ1Iiwi"
-    "ZG9tYWluOmRhdGEud2hvb3NoLWJpa2UucnUiLCJnZW9zaXRlOnByaXZhdGUiXSwiRGlyZWN0SXAiOlsi"
-    "Z2VvaXA6cnUiLCJnZW9pcDpwcml2YXRlIiwiMTAuMC4wLjAvOCIsIjE3Mi4xNi4wLjAvMTIiLCIxOTIu"
-    "MTY4LjAuMC8xNiIsIjE2OS4yNTQuMC4wLzE2Il0sIkRvbWFpblN0cmF0ZWd5IjoiSVBJZk5vbk1hdGNo"
-    "IiwiRmFrZUROUyI6ImZhbHNlIn0"
-)
+import base64
+import json
+from copy import deepcopy
+from typing import Any
+
+
+HAPP_ROUTING_CONFIG: dict[str, Any] = {
+    "Name": "RU Direct",
+    "GlobalProxy": "true",
+    "RemoteDNSType": "DoH",
+    "RemoteDNSDomain": "https://cloudflare-dns.com/dns-query",
+    "RemoteDNSIP": "1.1.1.1",
+    "DomesticDNSType": "DoH",
+    "DomesticDNSDomain": "https://common.dot.dns.yandex.net/dns-query",
+    "DomesticDNSIP": "77.88.8.8",
+    "DirectSites": [
+        "geosite:category-ru",
+        "domain:vk.com",
+        "domain:vk.ru",
+        "domain:vkvideo.ru",
+        "domain:ok.ru",
+        "domain:mail.ru",
+        "domain:gosuslugi.ru",
+        "domain:mos.ru",
+        "domain:nalog.gov.ru",
+        "domain:sberbank.ru",
+        "domain:sber.ru",
+        "domain:tbank.ru",
+        "domain:tinkoff.ru",
+        "domain:vtb.ru",
+        "domain:alfabank.ru",
+        "domain:gazprombank.ru",
+        "domain:yandex.ru",
+        "domain:yandex.net",
+        "domain:ya.ru",
+        "domain:ozon.ru",
+        "domain:wildberries.ru",
+        "domain:whoosh.bike",
+        "domain:whoosh-bike.ru",
+        "domain:data.whoosh-bike.ru",
+        "geosite:private",
+    ],
+    "DirectIp": [
+        "geoip:ru",
+        "geoip:private",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "169.254.0.0/16",
+    ],
+    "DomainStrategy": "IPIfNonMatch",
+    "FakeDNS": "false",
+}
+
+
+def happ_routing_payload() -> dict[str, Any]:
+    return deepcopy(HAPP_ROUTING_CONFIG)
+
+
+def build_happ_routing_header(payload: dict[str, Any] | None = None) -> str:
+    raw = json.dumps(payload or HAPP_ROUTING_CONFIG, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    encoded = base64.b64encode(raw).decode("ascii")
+    return f"happ://routing/onadd/{encoded}"
+
+
+HAPP_ROUTING_HEADER = build_happ_routing_header()
 
 
 def caddyfile(panel_domain: str, sub_domain: str, cabinet_domain: str, api_domain: str, email: str) -> str:

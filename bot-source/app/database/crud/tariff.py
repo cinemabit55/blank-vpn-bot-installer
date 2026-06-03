@@ -524,6 +524,112 @@ async def reorder_tariffs(
     logger.info('Изменен порядок тарифов', tariff_order=tariff_order)
 
 
+def _period_prices_from_config() -> dict[str, int]:
+    from app.config import PERIOD_PRICES, settings
+
+    period_prices: dict[str, int] = {}
+    for period, price in PERIOD_PRICES.items():
+        try:
+            period_int = int(period)
+            price_int = int(price)
+        except (TypeError, ValueError):
+            continue
+        if period_int > 0 and price_int > 0:
+            period_prices[str(period_int)] = price_int
+
+    if not period_prices and settings.BASE_SUBSCRIPTION_PRICE > 0:
+        period_prices['30'] = int(settings.BASE_SUBSCRIPTION_PRICE)
+    return period_prices
+
+
+async def ensure_blank_default_tariffs(db: AsyncSession) -> list[Tariff]:
+    """Creates the default blank-installer tariffs when they are missing.
+
+    The bootstrap is idempotent: existing tariffs with the same names are left
+    untouched so the owner can edit them from the cabinet.
+    """
+    from app.config import settings
+
+    if not settings.DEFAULT_TARIFF_BOOTSTRAP_ENABLED or not settings.is_tariffs_mode():
+        return []
+
+    period_prices = _period_prices_from_config()
+    if not period_prices:
+        logger.warning('Нет цен в конфиге для создания дефолтных тарифов')
+        return []
+
+    basic_name = settings.DEFAULT_TARIFF_BASIC_NAME.strip() or 'Базовый'
+    dark_name = settings.DEFAULT_TARIFF_DARK_NAME.strip() or 'Темные списки'
+    trial_name = settings.DEFAULT_TARIFF_TRIAL_NAME.strip() or 'Триал'
+    names = [basic_name, dark_name, trial_name]
+
+    result = await db.execute(select(Tariff).where(Tariff.name.in_(names)))
+    existing_names = {tariff.name for tariff in result.scalars().all()}
+
+    specs = [
+        {
+            'name': basic_name,
+            'description': 'Основной тариф',
+            'display_order': 0,
+            'is_active': True,
+            'is_trial_available': False,
+            'traffic_limit_gb': settings.DEFAULT_TRAFFIC_LIMIT_GB,
+            'device_limit': settings.DEFAULT_DEVICE_LIMIT,
+            'tier_level': 1,
+            'period_prices': dict(period_prices),
+            'show_in_gift': True,
+        },
+        {
+            'name': dark_name,
+            'description': 'Тариф для отдельного набора серверов',
+            'display_order': 1,
+            'is_active': True,
+            'is_trial_available': False,
+            'traffic_limit_gb': settings.DEFAULT_TRAFFIC_LIMIT_GB,
+            'device_limit': settings.DEFAULT_DEVICE_LIMIT,
+            'tier_level': 2,
+            'period_prices': dict(period_prices),
+            'show_in_gift': True,
+        },
+        {
+            'name': trial_name,
+            'description': 'Тариф для пробного доступа',
+            'display_order': 2,
+            'is_active': False,
+            'is_trial_available': True,
+            'traffic_limit_gb': settings.TRIAL_TRAFFIC_LIMIT_GB,
+            'device_limit': settings.TRIAL_DEVICE_LIMIT,
+            'tier_level': 1,
+            'period_prices': {},
+            'show_in_gift': False,
+        },
+    ]
+
+    created: list[Tariff] = []
+    for spec in specs:
+        if spec['name'] in existing_names:
+            continue
+        tariff = Tariff(
+            allowed_squads=[],
+            server_traffic_limits={},
+            allow_traffic_topup=True,
+            traffic_topup_enabled=False,
+            traffic_topup_packages={},
+            max_topup_traffic_gb=0,
+            **spec,
+        )
+        db.add(tariff)
+        created.append(tariff)
+
+    if created:
+        await db.commit()
+        for tariff in created:
+            await db.refresh(tariff)
+        logger.info('Созданы дефолтные тарифы blank installer', tariff_names=[tariff.name for tariff in created])
+
+    return created
+
+
 async def sync_default_tariff_from_config(db: AsyncSession) -> Tariff | None:
     """
     Синхронизирует дефолтный тариф из конфига (.env) в БД.
@@ -636,7 +742,12 @@ async def ensure_tariffs_synced(db: AsyncSession) -> None:
     Вызывается при старте бота.
     """
     try:
-        await sync_default_tariff_from_config(db)
+        from app.config import settings
+
+        if settings.DEFAULT_TARIFF_BOOTSTRAP_ENABLED and settings.is_tariffs_mode():
+            await ensure_blank_default_tariffs(db)
+        else:
+            await sync_default_tariff_from_config(db)
         # Загружаем периоды из БД в PERIOD_PRICES
         await load_period_prices_from_db(db)
     except Exception as e:
