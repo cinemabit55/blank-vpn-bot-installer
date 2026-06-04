@@ -122,6 +122,9 @@ https://{sub_domain} {{
         reverse_proxy remnawave-subscription-page:3010 {{
             header_up X-Real-IP {{remote_host}}
             header_up Host {{host}}
+            header_up X-Forwarded-Host {{host}}
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Ssl on
         }}
     }}
 
@@ -129,6 +132,9 @@ https://{sub_domain} {{
         reverse_proxy remnawave-subscription-page:3010 {{
             header_up X-Real-IP {{remote_host}}
             header_up Host {{host}}
+            header_up X-Forwarded-Host {{host}}
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Ssl on
         }}
     }}
 

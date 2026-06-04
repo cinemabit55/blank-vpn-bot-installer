@@ -102,6 +102,8 @@ def test_caddyfile_contains_happ_headers() -> None:
     assert 'fragmentation-enable 1' in rendered
     assert 'no-limit-enabled 1' in rendered
     assert 'no-limit-xhttp-enabled 1' not in rendered
+    assert 'header_up X-Forwarded-Proto https' in rendered
+    assert 'header_up X-Forwarded-Ssl on' in rendered
     assert 'https://sub.example.com' in rendered
 
 
