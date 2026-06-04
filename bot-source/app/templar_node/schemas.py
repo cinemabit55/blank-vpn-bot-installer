@@ -18,6 +18,10 @@ INTERNAL_NAME_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_-]{0,62}$')
 SECRET_REF_PREFIX = 'secrets/'
 VISION_FLOW = 'xtls-rprx-vision'
 DEFAULT_REALITY_CLIENT_FINGERPRINT = 'firefox'
+DEFAULT_XHTTP_SERVER_EXTRA: dict[str, Any] = {
+    'xPaddingBytes': '100-1000',
+    'scStreamUpServerSecs': '20-40',
+}
 
 
 class NodeRole(StrEnum):
@@ -238,8 +242,9 @@ class HostConfig(TemplarBaseModel):
 
 class XhttpConfig(TemplarBaseModel):
     path: str = Field(min_length=1)
-    mode: XhttpMode = XhttpMode.AUTO
+    mode: XhttpMode = XhttpMode.STREAM_UP
     host: str | None = None
+    extra: dict[str, Any] = Field(default_factory=lambda: dict(DEFAULT_XHTTP_SERVER_EXTRA))
 
     @field_validator('path')
     @classmethod
@@ -260,6 +265,16 @@ class XhttpConfig(TemplarBaseModel):
         if not stripped:
             return None
         return _validate_domain(stripped)
+
+    @field_validator('extra', mode='before')
+    @classmethod
+    def validate_extra(cls, value: dict[str, Any] | None) -> dict[str, Any]:
+        if value is None:
+            return {}
+        for key in value:
+            if not isinstance(key, str) or not key.strip():
+                raise ValueError('xhttp.extra keys must be non-empty strings')
+        return value
 
 
 class RealityConfig(TemplarBaseModel):

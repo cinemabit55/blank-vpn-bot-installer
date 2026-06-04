@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from app.templar_node.schemas import NodeConfig, NodeRole, RealityStrategy, TransitMode
+from app.templar_node.schemas import DEFAULT_XHTTP_SERVER_EXTRA, NodeConfig, NodeRole, RealityStrategy, TransitMode
 
 
 DEFAULT_PUBLIC_PORT = 443
@@ -514,7 +514,8 @@ def _xhttp_reality_transport(internal_name: str) -> dict[str, Any]:
         'transport': 'xhttp',
         'xhttp': {
             'path': f'/assets/{token}/{_slugify(internal_name)}',
-            'mode': 'auto',
+            'mode': 'stream-up',
+            'extra': dict(DEFAULT_XHTTP_SERVER_EXTRA),
         },
     }
 

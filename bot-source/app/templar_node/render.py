@@ -9,7 +9,15 @@ from pathlib import Path
 
 import yaml
 
-from app.templar_node.schemas import NodeConfig, NodeRole, RealityStrategy, RealityTransport, TransitMode, WarpMode
+from app.templar_node.schemas import (
+    DEFAULT_XHTTP_SERVER_EXTRA,
+    NodeConfig,
+    NodeRole,
+    RealityStrategy,
+    RealityTransport,
+    TransitMode,
+    WarpMode,
+)
 from app.templar_node.secrets import LocalSecretStore
 
 
@@ -433,7 +441,14 @@ def _reality_snippet(config: NodeConfig) -> dict:
         'realitySettings': '<filled-by-layer-2-from-secret-material>',
     }
     if config.reality.transport == RealityTransport.XHTTP:
-        snippet['xhttpSettings'] = config.reality.xhttp.model_dump(mode='json') if config.reality.xhttp else None
+        if config.reality.xhttp:
+            xhttp_settings = config.reality.xhttp.model_dump(mode='json')
+            xhttp_extra = dict(DEFAULT_XHTTP_SERVER_EXTRA)
+            xhttp_extra.update(xhttp_settings.get('extra') or {})
+            xhttp_settings['extra'] = xhttp_extra
+            snippet['xhttpSettings'] = xhttp_settings
+        else:
+            snippet['xhttpSettings'] = None
     if config.reality.strategy == RealityStrategy.LOCAL_DECOY_SITE:
         snippet['dest'] = f'{config.reality.local_decoy_addr}:{config.reality.local_decoy_port}'
     else:

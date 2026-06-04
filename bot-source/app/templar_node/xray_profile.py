@@ -16,7 +16,16 @@ from app.templar_node.credentials import (
     read_warp_registration,
 )
 from app.templar_node.routes import RouteOverrides
-from app.templar_node.schemas import DefaultRoute, NodeConfig, NodeRole, RealityStrategy, RealityTransport, TransitMode, WarpMode
+from app.templar_node.schemas import (
+    DEFAULT_XHTTP_SERVER_EXTRA,
+    DefaultRoute,
+    NodeConfig,
+    NodeRole,
+    RealityStrategy,
+    RealityTransport,
+    TransitMode,
+    WarpMode,
+)
 from app.templar_node.secrets import LocalSecretStore, SecretStoreError
 
 
@@ -36,6 +45,10 @@ DISCORD_DIRECT_DOMAINS = (
 DISCORD_DIRECT_IPS = ('66.22.192.0/18',)
 DISCORD_VOICE_UDP_PORTS = '50000-65535'
 TELEGRAM_DIRECT_IPS = ('geoip:telegram',)
+STREAM_KEEPALIVE_SOCKOPT = {
+    'tcpKeepAliveIdle': 30,
+    'tcpKeepAliveInterval': 10,
+}
 ADBLOCK_DOMAINS = (
     'geosite:category-ads-all',
     'domain:doubleclick.net',
@@ -189,6 +202,7 @@ def _transit_vless_inbound(config: NodeConfig, *, secret_store: LocalSecretStore
         'streamSettings': {
             'network': 'tcp',
             'security': 'reality',
+            'sockopt': _stream_keepalive_sockopt(),
             'realitySettings': {
                 'show': False,
                 'dest': _inbound_reality_dest(config),
@@ -330,6 +344,7 @@ def _transit_outbound_from_parts(
         'streamSettings': {
             'network': 'tcp',
             'security': 'reality',
+            'sockopt': _stream_keepalive_sockopt(),
             'realitySettings': {
                 'serverName': credentials.server_names[0],
                 'fingerprint': REALITY_CLIENT_FINGERPRINT,
@@ -527,6 +542,7 @@ def _public_stream_settings(config: NodeConfig, credentials: RealityCredentials)
     settings: dict[str, Any] = {
         'network': config.reality.transport.value,
         'security': 'reality',
+        'sockopt': _stream_keepalive_sockopt(),
         'realitySettings': _inbound_reality_settings(config, credentials),
     }
     if config.reality.transport == RealityTransport.XHTTP:
@@ -538,8 +554,16 @@ def _public_stream_settings(config: NodeConfig, credentials: RealityCredentials)
         }
         if config.reality.xhttp.host:
             xhttp_settings['host'] = config.reality.xhttp.host
+        xhttp_extra = dict(DEFAULT_XHTTP_SERVER_EXTRA)
+        xhttp_extra.update(config.reality.xhttp.extra)
+        if xhttp_extra:
+            xhttp_settings['extra'] = xhttp_extra
         settings['xhttpSettings'] = xhttp_settings
     return settings
+
+
+def _stream_keepalive_sockopt() -> dict[str, int]:
+    return dict(STREAM_KEEPALIVE_SOCKOPT)
 
 
 def _inbound_reality_dest(config: NodeConfig) -> str:
