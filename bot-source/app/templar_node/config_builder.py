@@ -514,7 +514,7 @@ def _xhttp_reality_transport(internal_name: str) -> dict[str, Any]:
         'transport': 'xhttp',
         'xhttp': {
             'path': f'/assets/{token}/{_slugify(internal_name)}',
-            'mode': 'stream-up',
+            'mode': 'auto',
             'extra': dict(DEFAULT_XHTTP_SERVER_EXTRA),
         },
     }

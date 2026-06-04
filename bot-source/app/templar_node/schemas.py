@@ -242,7 +242,7 @@ class HostConfig(TemplarBaseModel):
 
 class XhttpConfig(TemplarBaseModel):
     path: str = Field(min_length=1)
-    mode: XhttpMode = XhttpMode.STREAM_UP
+    mode: XhttpMode = XhttpMode.AUTO
     host: str | None = None
     extra: dict[str, Any] = Field(default_factory=lambda: dict(DEFAULT_XHTTP_SERVER_EXTRA))
 

@@ -195,7 +195,7 @@ def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     assert 'if config.warp.discord_direct:' in profile.read_text(encoding='utf-8')
 
 
-def test_bundled_bot_source_uses_stream_up_xhttp_keepalive() -> None:
+def test_bundled_bot_source_uses_xhttp_auto_with_server_keepalive() -> None:
     root = Path(__file__).resolve().parents[1]
     schemas = (root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py').read_text(encoding='utf-8')
     builder = (root / 'bot-source' / 'app' / 'templar_node' / 'config_builder.py').read_text(encoding='utf-8')
@@ -204,8 +204,8 @@ def test_bundled_bot_source_uses_stream_up_xhttp_keepalive() -> None:
 
     assert "DEFAULT_XHTTP_SERVER_EXTRA: dict[str, Any]" in schemas
     assert "'scStreamUpServerSecs': '20-40'" in schemas
-    assert "mode: XhttpMode = XhttpMode.STREAM_UP" in schemas
-    assert "'mode': 'stream-up'" in builder
+    assert "mode: XhttpMode = XhttpMode.AUTO" in schemas
+    assert "'mode': 'auto'" in builder
     assert "STREAM_KEEPALIVE_SOCKOPT" in profile
     assert "'sockopt': _stream_keepalive_sockopt()" in profile
     assert "xhttp_settings['extra'] = xhttp_extra" in profile
