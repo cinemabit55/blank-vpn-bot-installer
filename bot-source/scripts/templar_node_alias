@@ -9,11 +9,11 @@ COMMAND_NAME="$(basename "$0")"
 
 print_commands() {
   cat <<'COMMANDS'
-VPN node shortcut commands:
+Node shortcut commands:
   add_kaskaddir            interactive cascade + foreign direct provisioning, both remote_dest/no local site
   add_cascade              same as add_kaskaddir
   add_direct_site          interactive direct RU+WARP provisioning with domain/site masking
-  add_direct               interactive direct RU+WARP provisioning with remote_dest/xHTTP/Firefox defaults
+  add_direct               interactive direct RU+WARP provisioning with remote_dest/TCP REALITY/Firefox defaults
   add_inbound              add one more RU cascade edge to an existing foreign exit, remote_dest/no local site
   add_routes               add/apply routing rules for a RU cascade edge
   delete_node              full interactive delete, applies immediately after selection
@@ -169,14 +169,14 @@ case "$COMMAND_NAME" in
     set -- post-bootstrap "$@"
     ;;
   *)
-    echo "Unknown VPN node shortcut: $COMMAND_NAME" >&2
+    echo "Unknown node shortcut: $COMMAND_NAME" >&2
     echo "Run node_commands for the available shortcuts." >&2
     exit 64
     ;;
 esac
 
 if [ ! -f "$CLI_PATH" ]; then
-  echo "VPN node CLI not found: $CLI_PATH" >&2
+  echo "Node CLI not found: $CLI_PATH" >&2
   exit 66
 fi
 if [ ! -x "$PYTHON_BIN" ]; then

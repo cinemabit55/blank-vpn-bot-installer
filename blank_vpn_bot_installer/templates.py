@@ -98,7 +98,6 @@ https://{sub_domain} {{
         Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Pragma "no-cache"
         Expires "0"
-        no-limit-xhttp-enabled 1
         no-limit-enabled 1
         noises-enable 1
         noises-type rand

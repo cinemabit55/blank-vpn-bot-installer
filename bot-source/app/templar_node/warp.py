@@ -59,7 +59,7 @@ class WarpRegistrationOptions:
     api_version: str = WARP_API_VERSION
     client_version: str = WARP_CLIENT_VERSION
     user_agent: str = WARP_USER_AGENT
-    device_model: str = 'Templar Node'
+    device_model: str = 'VPN Node'
     license_key: str | None = None
     timeout_seconds: int = 20
     verify_tls: bool = True

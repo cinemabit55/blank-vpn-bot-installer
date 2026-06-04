@@ -212,7 +212,7 @@ fi
 
 def render_network_tuning_service() -> str:
     return """[Unit]
-Description=Templar node TCP MSS and MTU tuning
+Description=VPN node TCP MSS and MTU tuning
 After=network-online.target ufw.service
 Wants=network-online.target
 Before=docker.service

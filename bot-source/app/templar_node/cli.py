@@ -136,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='templar-node',
-        description='Templar VPN node onboarding helper.',
+        description='VPN node onboarding helper.',
     )
     subparsers = parser.add_subparsers(dest='command', required=True)
 
@@ -751,7 +751,7 @@ def _add_warp_register_args(parser: argparse.ArgumentParser, *, include_format: 
     parser.add_argument('--warp-api-version', default='v0a2483')
     parser.add_argument('--warp-client-version', default='a-6.81-2410012252.0')
     parser.add_argument('--warp-user-agent', default='1.1.1.1/6.81')
-    parser.add_argument('--warp-device-model', default='Templar Node')
+    parser.add_argument('--warp-device-model', default='VPN Node')
     parser.add_argument('--warp-license-key-ref', help='Optional secret ref with Cloudflare WARP+ license key.')
     if include_format:
         parser.add_argument('--format', choices=('text', 'json'), default='text')
@@ -919,7 +919,7 @@ def _cmd_generate_ru_warp(args: argparse.Namespace) -> int:
 
 
 def _cmd_wizard_cascade_direct(args: argparse.Namespace) -> int:
-    print('Templar node wizard: cascade + foreign direct')
+    print('Node wizard: cascade + foreign direct')
     common = _prompt_common_generation_input()
     foreign_reality_strategy = _prompt_choice(
         'Foreign exit REALITY strategy',
@@ -992,7 +992,7 @@ def _cmd_wizard_cascade_direct(args: argparse.Namespace) -> int:
 
 
 def _cmd_wizard_ru_warp(args: argparse.Namespace) -> int:
-    print('Templar node wizard: RU WARP')
+    print('Node wizard: RU WARP')
     common = _prompt_common_generation_input()
     reality_strategy = _prompt_choice(
         'REALITY strategy',

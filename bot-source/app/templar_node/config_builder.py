@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from app.templar_node.schemas import DEFAULT_XHTTP_SERVER_EXTRA, NodeConfig, NodeRole, RealityStrategy, TransitMode
+from app.templar_node.schemas import NodeConfig, NodeRole, RealityStrategy, TransitMode
 
 
 DEFAULT_PUBLIC_PORT = 443
@@ -417,7 +417,7 @@ def _base_config(common: CommonGenerationInput, node: NodeGenerationInput, tarif
             'local_decoy_port': 8443,
             'flow': 'xtls-rprx-vision',
             'server_names': [domain],
-            **_xhttp_reality_transport(node.internal_name),
+            **_tcp_reality_transport(),
         },
         'site': {
             'engine': 'caddy',
@@ -484,9 +484,8 @@ def _apply_remote_dest_config(
         'flow': 'xtls-rprx-vision',
         'server_names': list(server_names),
         'target': remote_dest_target,
-        **_xhttp_reality_transport(node.internal_name),
+        **_tcp_reality_transport(),
     }
-    config['reality']['xhttp']['host'] = server_names[0]
     config['site']['certificate_source'] = 'unused_remote_dest'
     config['site']['dns_api_token_ref'] = None
 
@@ -508,16 +507,8 @@ def _default_spare_domains(domain: str) -> tuple[str, str]:
     return (f'{label}-b.{rest}', f'{label}-c.{rest}')
 
 
-def _xhttp_reality_transport(internal_name: str) -> dict[str, Any]:
-    token = uuid.uuid5(uuid.NAMESPACE_URL, f'templar-node:xhttp:{internal_name}').hex[:8]
-    return {
-        'transport': 'xhttp',
-        'xhttp': {
-            'path': f'/assets/{token}/{_slugify(internal_name)}',
-            'mode': 'auto',
-            'extra': dict(DEFAULT_XHTTP_SERVER_EXTRA),
-        },
-    }
+def _tcp_reality_transport() -> dict[str, Any]:
+    return {'transport': 'tcp'}
 
 
 def _effective_domain(node: NodeGenerationInput) -> str:

@@ -100,7 +100,8 @@ def test_caddyfile_contains_happ_headers() -> None:
     rendered = caddyfile('panel.example.com', 'sub.example.com', 'cabinet.example.com', 'api.example.com', 'admin@example.com')
 
     assert 'fragmentation-enable 1' in rendered
-    assert 'no-limit-xhttp-enabled 1' in rendered
+    assert 'no-limit-enabled 1' in rendered
+    assert 'no-limit-xhttp-enabled 1' not in rendered
     assert 'https://sub.example.com' in rendered
 
 
@@ -195,21 +196,22 @@ def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     assert 'if config.warp.discord_direct:' in profile.read_text(encoding='utf-8')
 
 
-def test_bundled_bot_source_uses_xhttp_auto_with_server_keepalive() -> None:
+def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> None:
     root = Path(__file__).resolve().parents[1]
     schemas = (root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py').read_text(encoding='utf-8')
     builder = (root / 'bot-source' / 'app' / 'templar_node' / 'config_builder.py').read_text(encoding='utf-8')
     profile = (root / 'bot-source' / 'app' / 'templar_node' / 'xray_profile.py').read_text(encoding='utf-8')
-    render = (root / 'bot-source' / 'app' / 'templar_node' / 'render.py').read_text(encoding='utf-8')
+    remnawave = (root / 'bot-source' / 'app' / 'templar_node' / 'remnawave.py').read_text(encoding='utf-8')
 
     assert "DEFAULT_XHTTP_SERVER_EXTRA: dict[str, Any]" in schemas
     assert "'scStreamUpServerSecs': '20-40'" in schemas
-    assert "mode: XhttpMode = XhttpMode.AUTO" in schemas
-    assert "'mode': 'auto'" in builder
+    assert "transport: RealityTransport = RealityTransport.TCP" in schemas
+    assert "return {'transport': 'tcp'}" in builder
+    assert "transport': 'xhttp'" not in builder
     assert "STREAM_KEEPALIVE_SOCKOPT" in profile
     assert "'sockopt': _stream_keepalive_sockopt()" in profile
-    assert "xhttp_settings['extra'] = xhttp_extra" in profile
-    assert "xhttp_settings['extra'] = xhttp_extra" in render
+    assert "body['path'] = ''" in remnawave
+    assert "body['host'] = ''" in remnawave
 
 
 def test_bundled_bot_source_bootstraps_default_tariffs() -> None:
@@ -254,6 +256,16 @@ def test_bundled_shortcut_help_is_unbranded() -> None:
 
     for path in user_visible_files:
         assert 'Templar' not in path.read_text(encoding='utf-8')
+
+
+def test_bundled_node_quick_defaults_are_neutral() -> None:
+    root = Path(__file__).resolve().parents[1]
+    cli = (root / 'bot-source' / 'app' / 'templar_node' / 'cli.py').read_text(encoding='utf-8')
+
+    assert "DEFAULT_QUICK_MAIN_IPV4 = '203.0.113.10'" in cli
+    assert "DEFAULT_QUICK_REMNAWAVE_API_URL = 'https://panel.example.com'" in cli
+    assert '213.155.11.125' not in cli
+    assert 'templarvpn.com' not in cli
 
 
 def test_bundled_user_visible_branding_is_neutralized() -> None:

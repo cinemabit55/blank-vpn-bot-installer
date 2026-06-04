@@ -1,4 +1,4 @@
-# VPN Node CLI
+# Node CLI
 
 Первый слой автоматизации для настройки VPN-нод.
 
@@ -7,7 +7,7 @@
 - читает node config YAML;
 - валидирует роли `foreign-exit`, `ru-edge`, `ru-warp`;
 - строит dry-run план `Layer 2a -> Layer 1 -> Layer 2b`;
-- генерирует node config YAML для сценариев `cascade-direct`, дополнительной `ru-edge` к уже существующему foreign-exit и `ru-warp`; быстрые команды по умолчанию используют `remote_dest`/xHTTP без локального decoy-сайта;
+- генерирует node config YAML для сценариев `cascade-direct`, дополнительной `ru-edge` к уже существующему foreign-exit и `ru-warp`; быстрые команды по умолчанию используют `remote_dest`/TCP REALITY без локального decoy-сайта;
 - проверяет локальные `secrets/...` refs через filesystem secret store;
 - записывает локальные secrets через prompt/stdin/file без вывода значения в stdout;
 - проверяет реальные RemnaWave и Cloudflare API read-only командами;
@@ -78,7 +78,7 @@ python3 scripts/templar_node.py post-bootstrap ops/templar-node/examples/ru-warp
 Короткие live-команды для обычного использования после установки алиасов:
 
 ```bash
-add_kaskaddir     # каскад + иностранная напрямую; оба публичных входа без локального сайта, через remote_dest/xHTTP
+add_kaskaddir     # каскад + иностранная напрямую; оба публичных входа без локального сайта, через remote_dest/TCP REALITY
 add_direct_site   # РФ напрямую + WARP с доменом и decoy site
 add_direct        # РФ напрямую + WARP без локального сайта, через REALITY remote_dest
 add_routes        # выбрать RU-edge и добавить домены/IP в правила маршрутизации
@@ -110,7 +110,7 @@ python3 scripts/templar_node.py operator ru-direct-remote /opt/templar/configs/r
 
 `simulate` прогоняет весь порядок `Layer 2a -> Layer 1 -> Layer 2b` локально: создает fake RemnaWave Node/Host/Squads, fake Bedolaga тарифы, checkpoint state и опционально rendered artifacts. Команду можно запускать повторно: control-plane ресурсы будут переиспользованы, а не продублированы. Если передать несколько YAML, они выполняются в одном fake окружении; так удобно проверять пару `foreign-exit + ru-edge` для каскада и прямого иностранного подключения.
 
-`generate cascade-direct` пишет два конфига за один проход: `foreign-exit` для прямого иностранного подключения и `ru-edge` для каскада. CLI defaults для обеих публичных нод: `remote_dest` + xHTTP, Host address равен публичному IPv4 сервера, локальный Caddy decoy не используется. Если нужен старый доменный режим, передай `--foreign-reality-strategy local_decoy_site` и/или `--ru-reality-strategy local_decoy_site` вместе с node-domain. Тарифы можно передать общие через `--tariff-name/--tariff-slug` или раздельные через `--foreign-tariff-name` и `--ru-tariff-name`.
+`generate cascade-direct` пишет два конфига за один проход: `foreign-exit` для прямого иностранного подключения и `ru-edge` для каскада. CLI defaults для обеих публичных нод: `remote_dest` + TCP REALITY, Host address равен публичному IPv4 сервера, локальный Caddy decoy не используется. Если нужен старый доменный режим, передай `--foreign-reality-strategy local_decoy_site` и/или `--ru-reality-strategy local_decoy_site` вместе с node-domain. Тарифы можно передать общие через `--tariff-name/--tariff-slug` или раздельные через `--foreign-tariff-name` и `--ru-tariff-name`.
 
 `generate ru-edge <foreign-exit.yml>` добавляет еще одну российскую cascade edge к уже существующему foreign-exit. Команда наследует foreign transit endpoint/port, service user и REALITY credential refs, генерирует только новый RU-edge YAML и по `--updated-foreign-config` пишет копию foreign YAML с новым RU IPv4 в `transit.allow_from`. Если foreign-exit работает через `remote_dest`, RU-edge получает публичный IP foreign-сервера как transit endpoint и его REALITY serverNames, а не служебный `*.node.invalid` домен. Эту обновленную foreign-конфигурацию нужно применить на иностранной ноде, чтобы открыть `10443/tcp` для второго RU сервера, затем онбордить новый RU-edge через `operator ru-edge-add`.
 

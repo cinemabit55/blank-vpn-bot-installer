@@ -458,6 +458,9 @@ class HttpRemnaWaveAdapter:
                     raise RemnaWaveAdapterError('reality.transport=xhttp requires reality.xhttp')
                 body['path'] = config.reality.xhttp.path
                 body['host'] = config.reality.xhttp.host or ''
+            else:
+                body['path'] = ''
+                body['host'] = ''
             existing = self._find_host(config)
             if existing is None:
                 host = _response_object(self.client.post('/api/hosts', json_body=body), 'created host')
@@ -545,7 +548,7 @@ class HttpRemnaWaveAdapter:
                 'trafficLimitBytes': TRANSIT_SERVICE_USER_TRAFFIC_LIMIT_BYTES,
                 'trafficLimitStrategy': 'NO_RESET',
                 'expireAt': '2099-01-01T00:00:00.000Z',
-                'description': f'Templar transit service user for {config.display.internal_name}',
+                'description': f'Transit service user for {config.display.internal_name}',
                 'tag': 'SYSTEM_TRANSIT',
                 'activeInternalSquads': [internal_squad_uuid] if internal_squad_uuid else [],
             }

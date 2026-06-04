@@ -1,4 +1,4 @@
-# VPN Node Shortcuts
+# Node Shortcuts
 
 Install on a control-plane host:
 
@@ -11,7 +11,7 @@ The installer creates executable wrappers in `/usr/local/bin`. They use `/opt/be
 
 | Command | Underlying script command | What it does |
 | --- | --- | --- |
-| `add_kaskaddir` | `quick cascade-direct` | Interactive full provisioning of foreign direct + RU cascade without local decoy sites. Prompts for IPs, root passwords, display names, tariffs and remote REALITY SNI, then generates xHTTP/REALITY remote-dest YAML and runs onboarding. Tariff default is all three pools. |
+| `add_kaskaddir` | `quick cascade-direct` | Interactive full provisioning of foreign direct + RU cascade without local decoy sites. Prompts for IPs, root passwords, display names, tariffs and remote REALITY SNI, then generates TCP/REALITY remote-dest YAML and runs onboarding. Tariff default is all three pools. |
 | `add_cascade` / `add_cascade_direct` | `quick cascade-direct` | English aliases for `add_kaskaddir`. |
 | `add_direct_site` | `quick direct-site` | Interactive full provisioning of one RU direct WARP node with a bought domain and decoy site. |
 | `add_direct` | `quick direct-remote` | Interactive full provisioning of one RU direct WARP node without a local decoy site, using REALITY `remote_dest` defaults tested with `ya.ru:443`. |

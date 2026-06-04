@@ -378,3 +378,4 @@ def _append_unique_resync(environment: dict[str, Any], tariff_key: str, internal
             'status': 'subscriptions_resynced',
         },
     )
+
