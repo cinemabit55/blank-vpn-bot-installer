@@ -203,6 +203,7 @@ def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> 
     schemas = (root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py').read_text(encoding='utf-8')
     builder = (root / 'bot-source' / 'app' / 'templar_node' / 'config_builder.py').read_text(encoding='utf-8')
     profile = (root / 'bot-source' / 'app' / 'templar_node' / 'xray_profile.py').read_text(encoding='utf-8')
+    render = (root / 'bot-source' / 'app' / 'templar_node' / 'render.py').read_text(encoding='utf-8')
     remnawave = (root / 'bot-source' / 'app' / 'templar_node' / 'remnawave.py').read_text(encoding='utf-8')
 
     assert "DEFAULT_XHTTP_SERVER_EXTRA: dict[str, Any]" in schemas
@@ -212,6 +213,11 @@ def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> 
     assert "transport': 'xhttp'" not in builder
     assert "STREAM_KEEPALIVE_SOCKOPT" in profile
     assert "'sockopt': _stream_keepalive_sockopt()" in profile
+    assert "'connIdle': 1800" in profile
+    assert "'handshake': 10" in profile
+    assert 'net.ipv4.tcp_keepalive_time = 60' in render
+    assert 'net.ipv4.tcp_keepalive_intvl = 10' in render
+    assert 'net.ipv4.tcp_keepalive_probes = 6' in render
     assert "body['path'] = ''" in remnawave
     assert "body['host'] = ''" in remnawave
 

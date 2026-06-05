@@ -197,9 +197,15 @@ install -d -m 0755 /etc/sysctl.d
 cat > "$SYSCTL_FILE" <<SYSCTL
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_ecn = 0
+net.ipv4.tcp_keepalive_time = 60
+net.ipv4.tcp_keepalive_intvl = 10
+net.ipv4.tcp_keepalive_probes = 6
 SYSCTL
 sysctl -w net.ipv4.tcp_mtu_probing=1 >/dev/null
 sysctl -w net.ipv4.tcp_ecn=0 >/dev/null
+sysctl -w net.ipv4.tcp_keepalive_time=60 >/dev/null
+sysctl -w net.ipv4.tcp_keepalive_intvl=10 >/dev/null
+sysctl -w net.ipv4.tcp_keepalive_probes=6 >/dev/null
 
 if command -v iptables >/dev/null 2>&1; then
   iptables -t mangle -C PREROUTING -p tcp --dport "$REALITY_PUBLIC_PORT" --tcp-flags SYN,RST SYN -j TCPMSS --set-mss "$MSS_VALUE" 2>/dev/null || \\

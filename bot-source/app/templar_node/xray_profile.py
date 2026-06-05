@@ -49,6 +49,16 @@ STREAM_KEEPALIVE_SOCKOPT = {
     'tcpKeepAliveIdle': 30,
     'tcpKeepAliveInterval': 10,
 }
+STABILITY_POLICY = {
+    'levels': {
+        '0': {
+            'handshake': 10,
+            'connIdle': 1800,
+            'uplinkOnly': 2,
+            'downlinkOnly': 5,
+        },
+    },
+}
 ADBLOCK_DOMAINS = (
     'geosite:category-ads-all',
     'domain:doubleclick.net',
@@ -149,6 +159,7 @@ def render_xray_config_profile(
     public_tag = public_inbound_tag(config)
     profile = {
         'log': {'loglevel': 'info'},
+        'policy': STABILITY_POLICY,
         'inbounds': _render_inbounds(config, secret_store=secret_store, ensure_missing=ensure_missing, public_tag=public_tag),
         'outbounds': _render_outbounds(config, secret_store=secret_store),
         'routing': _render_routing(config, route_overrides=route_overrides, public_tag=public_tag),
