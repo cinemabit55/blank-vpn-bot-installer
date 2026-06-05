@@ -390,6 +390,9 @@ def _render_routing(config: NodeConfig, *, route_overrides: RouteOverrides | Non
         inbound_tags = _warp_inbound_tags(config, public_tag)
         warp_tag = config.warp.outbound_tag or 'WARP_OUT'
         if config.warp.discord_direct:
+            # Discord supplies the voice UDP endpoint dynamically, so static
+            # domain/IP/port matches alone cannot reliably bypass WARP.
+            rules.append({'type': 'field', 'inboundTag': inbound_tags, 'network': 'udp', 'outboundTag': DIRECT_TAG})
             rules.extend(_discord_direct_rules(inbound_tags=inbound_tags))
         rules.extend(_telegram_direct_rules(inbound_tags=inbound_tags))
         rules.append({'type': 'field', 'inboundTag': inbound_tags, 'outboundTag': warp_tag})

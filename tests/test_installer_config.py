@@ -213,6 +213,7 @@ def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> 
     assert "transport': 'xhttp'" not in builder
     assert "STREAM_KEEPALIVE_SOCKOPT" in profile
     assert "'sockopt': _stream_keepalive_sockopt()" in profile
+    assert "'network': 'udp', 'outboundTag': DIRECT_TAG" in profile
     assert "'connIdle': 1800" in profile
     assert "'handshake': 10" in profile
     assert 'net.ipv4.tcp_keepalive_time = 60' in render
