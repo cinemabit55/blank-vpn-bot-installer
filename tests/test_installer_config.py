@@ -116,6 +116,18 @@ def test_bootstrap_script_keeps_prompts_interactive_when_piped() -> None:
     assert 'blank_vpn_bot_installer/installer.py' in script
 
 
+def test_bootstrap_script_waits_for_apt_locks() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = (root / 'scripts' / 'install_blank_vpn_bot.sh').read_text(encoding='utf-8')
+
+    assert 'apt_get_retry()' in script
+    assert "APT_LOCK_RETRIES:-60" in script
+    assert "APT_LOCK_RETRY_DELAY_SECONDS:-10" in script
+    assert "Could not get lock|Unable to acquire.*lock|is held by process" in script
+    assert 'apt_get_retry update' in script
+    assert 'apt_get_retry install -y --no-install-recommends' in script
+
+
 def test_bundled_remnawave_compose_pins_stable_backend_major() -> None:
     root = Path(__file__).resolve().parents[1]
     compose = (root / 'bot-source' / 'ops' / 'remnawave' / 'docker-compose.yml').read_text(encoding='utf-8')

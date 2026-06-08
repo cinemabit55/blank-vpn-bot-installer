@@ -20,6 +20,39 @@ die() {
   exit 1
 }
 
+apt_get_retry() {
+  local attempt=1
+  local max_attempts="${APT_LOCK_RETRIES:-60}"
+  local retry_delay="${APT_LOCK_RETRY_DELAY_SECONDS:-10}"
+  local output_file
+  local exit_code
+
+  while true; do
+    output_file="$(mktemp)"
+    set +e
+    apt-get "$@" 2>&1 | tee "$output_file"
+    exit_code="${PIPESTATUS[0]}"
+    set -e
+
+    if [[ "$exit_code" -eq 0 ]]; then
+      rm -f "$output_file"
+      return 0
+    fi
+
+    if grep -Eqi 'Could not get lock|Unable to acquire.*lock|is held by process' "$output_file" &&
+      [[ "$attempt" -lt "$max_attempts" ]]; then
+      log "APT is busy with another system process; waiting ${retry_delay}s before retry ${attempt}/${max_attempts}"
+      rm -f "$output_file"
+      sleep "$retry_delay"
+      attempt=$((attempt + 1))
+      continue
+    fi
+
+    rm -f "$output_file"
+    return "$exit_code"
+  done
+}
+
 if [[ "${EUID}" -ne 0 ]]; then
   die "Run as root: sudo bash scripts/install_blank_vpn_bot.sh"
 fi
@@ -27,16 +60,16 @@ fi
 log "Installing base packages"
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update
-  apt-get install -y --no-install-recommends \
+  apt_get_retry update
+  apt_get_retry install -y --no-install-recommends \
     ca-certificates curl git jq openssl python3 python3-venv rsync tar ufw
-  apt-get install -y --no-install-recommends python3-pil || true
+  apt_get_retry install -y --no-install-recommends python3-pil || true
   if ! command -v docker >/dev/null 2>&1; then
-    apt-get install -y --no-install-recommends docker.io
+    apt_get_retry install -y --no-install-recommends docker.io
   fi
   if ! docker compose version >/dev/null 2>&1; then
-    apt-get install -y --no-install-recommends docker-compose-v2 || \
-      apt-get install -y --no-install-recommends docker-compose-plugin || true
+    apt_get_retry install -y --no-install-recommends docker-compose-v2 || \
+      apt_get_retry install -y --no-install-recommends docker-compose-plugin || true
   fi
 else
   log "apt-get is not available; assuming packages are already installed"
