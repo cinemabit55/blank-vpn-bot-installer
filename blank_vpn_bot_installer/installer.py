@@ -997,7 +997,12 @@ def docker_up_application(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         for name in ("remnawave_bot_db", "remnawave_bot_redis", "remnawave_bot")
     )
     if not ctx.dry_run and bot_ready:
-        status("bot stack is already running; skipping pull/build")
+        status("bot stack is already running; applying current configuration")
+        run_with_retries(
+            ["docker", "compose", "up", "-d", "--pull", "never", "bot"],
+            cwd=bot_dir,
+            dry_run=ctx.dry_run,
+        )
     else:
         status("pulling bot database and Redis images; interrupted downloads will be retried")
         run_with_retries(["docker", "compose", "pull", "postgres", "redis"], cwd=bot_dir, dry_run=ctx.dry_run)

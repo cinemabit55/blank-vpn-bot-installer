@@ -239,7 +239,7 @@ def test_application_start_skips_already_running_stacks(monkeypatch, tmp_path: P
 
     installer.docker_up_application(installer.InstallerContext(), cfg)
 
-    assert calls == []
+    assert calls == [['docker', 'compose', 'up', '-d', '--pull', 'never', 'bot']]
 
 
 def test_bot_health_probe_supplies_api_key_from_container_env(monkeypatch) -> None:
