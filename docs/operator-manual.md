@@ -27,7 +27,9 @@
 На свежем сервере:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh \
+  -o /tmp/install_blank_vpn_bot.sh
+sudo bash /tmp/install_blank_vpn_bot.sh
 ```
 
 Если репозиторий установщика private, нужен GitHub token с доступом на чтение:
@@ -36,7 +38,8 @@ curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer
 export INSTALLER_GITHUB_TOKEN=github_pat_or_classic_token
 curl -fsSL -H "Authorization: Bearer $INSTALLER_GITHUB_TOKEN" \
   https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh \
-  | sudo INSTALLER_GITHUB_TOKEN="$INSTALLER_GITHUB_TOKEN" bash
+  -o /tmp/install_blank_vpn_bot.sh
+sudo INSTALLER_GITHUB_TOKEN="$INSTALLER_GITHUB_TOKEN" bash /tmp/install_blank_vpn_bot.sh
 ```
 
 Пока GitHub-репозиторий установщика не опубликован, можно запускать из локального checkout:

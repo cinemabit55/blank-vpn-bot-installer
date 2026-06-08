@@ -9,7 +9,9 @@ The installer is self-contained by default: it uses the bundled `bot-source/` sn
 On a fresh Ubuntu server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh \
+  -o /tmp/install_blank_vpn_bot.sh
+sudo bash /tmp/install_blank_vpn_bot.sh
 ```
 
 For a private repository, pass a GitHub token that can read this repository:
@@ -18,7 +20,8 @@ For a private repository, pass a GitHub token that can read this repository:
 export INSTALLER_GITHUB_TOKEN=github_pat_or_classic_token
 curl -fsSL -H "Authorization: Bearer $INSTALLER_GITHUB_TOKEN" \
   https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh \
-  | sudo INSTALLER_GITHUB_TOKEN="$INSTALLER_GITHUB_TOKEN" bash
+  -o /tmp/install_blank_vpn_bot.sh
+sudo INSTALLER_GITHUB_TOKEN="$INSTALLER_GITHUB_TOKEN" bash /tmp/install_blank_vpn_bot.sh
 ```
 
 Until the GitHub repository is created, run locally from a cloned checkout:

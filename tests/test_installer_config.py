@@ -107,6 +107,29 @@ def test_caddyfile_contains_happ_headers() -> None:
     assert 'https://sub.example.com' in rendered
 
 
+def test_bootstrap_script_keeps_prompts_interactive_when_piped() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = (root / 'scripts' / 'install_blank_vpn_bot.sh').read_text(encoding='utf-8')
+
+    assert '[[ ! -t 0 && -r /dev/tty ]]' in script
+    assert '< /dev/tty' in script
+    assert 'blank_vpn_bot_installer/installer.py' in script
+
+
+def test_docs_use_temp_file_for_interactive_bootstrap() -> None:
+    root = Path(__file__).resolve().parents[1]
+    docs = [
+        root / 'README.md',
+        root / 'docs' / 'operator-manual.md',
+    ]
+
+    for path in docs:
+        rendered = path.read_text(encoding='utf-8')
+        assert '| sudo bash' not in rendered
+        assert '-o /tmp/install_blank_vpn_bot.sh' in rendered
+        assert 'bash /tmp/install_blank_vpn_bot.sh' in rendered
+
+
 def test_happ_routing_header_is_generated_from_structured_payload() -> None:
     from blank_vpn_bot_installer.templates import HAPP_ROUTING_HEADER, happ_routing_payload
 

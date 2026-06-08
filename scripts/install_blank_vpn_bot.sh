@@ -58,4 +58,7 @@ else
 fi
 
 log "Starting Python installer"
+if [[ ! -t 0 && -r /dev/tty ]]; then
+  exec "$PYTHON_BIN" "$INSTALLER_DIR/blank_vpn_bot_installer/installer.py" "$@" < /dev/tty
+fi
 exec "$PYTHON_BIN" "$INSTALLER_DIR/blank_vpn_bot_installer/installer.py" "$@"
