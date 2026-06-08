@@ -16,7 +16,7 @@
 - Bot and node alias installation.
 - Root-only install summary.
 - Markdown and PDF operator manual.
-- Neutral generated banner pack for blank installs.
+- Clean text-first bot interface without generated banners.
 - Non-destructive source sync on installer reruns.
 - `add_payment` helper:
   - provider choice;

@@ -941,97 +941,10 @@ def get_info_menu_keyboard(
 ) -> InlineKeyboardMarkup:
     texts = get_texts(language)
 
-    buttons: list[list[InlineKeyboardButton]] = []
-
-    if show_faq:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=texts.t('MENU_FAQ', '❓ FAQ'),
-                    callback_data='menu_faq',
-                )
-            ]
-        )
-
-    if show_promo_groups:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=texts.t('MENU_PROMO_GROUPS_INFO', '🎯 Промогруппы'),
-                    callback_data='menu_info_promo_groups',
-                )
-            ]
-        )
-
-    if show_privacy_policy:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=texts.t('MENU_PRIVACY_POLICY', '🛡️ Политика конф.'),
-                    callback_data='menu_privacy_policy',
-                )
-            ]
-        )
-
-    if show_public_offer:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=texts.t('MENU_PUBLIC_OFFER', '📄 Оферта'),
-                    callback_data='menu_public_offer',
-                )
-            ]
-        )
-
-    buttons.append([InlineKeyboardButton(text=texts.MENU_RULES, callback_data='menu_rules')])
-
-    # TZ Templar VPN: ссылки на Политику конфиденциальности и Пользовательское соглашение (telegra.ph)
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text=texts.t('PRIVACY_POLICY_LINK_BUTTON', '🛡️ Политика конфиденциальности'),
-                url='https://telegra.ph/Politika-konfidencialnosti-04-01-26',
-            )
-        ]
-    )
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text=texts.t('USER_AGREEMENT_LINK_BUTTON', '📄 Пользовательское соглашение'),
-                url='https://telegra.ph/Polzovatelskoe-soglashenie-04-01-19',
-            )
-        ]
-    )
-
-    server_status_mode = settings.get_server_status_mode()
-    server_status_text = texts.t('MENU_SERVER_STATUS', '📊 Статус серверов')
-
-    if server_status_mode == 'external_link':
-        status_url = settings.get_server_status_external_url()
-        if status_url:
-            buttons.append([InlineKeyboardButton(text=server_status_text, url=status_url)])
-    elif server_status_mode == 'external_link_miniapp':
-        status_url = settings.get_server_status_external_url()
-        if status_url:
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        text=server_status_text,
-                        web_app=types.WebAppInfo(url=status_url),
-                    )
-                ]
-            )
-    elif server_status_mode == 'xray':
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=server_status_text,
-                    callback_data='menu_server_status',
-                )
-            ]
-        )
-
-    buttons.append([InlineKeyboardButton(text=texts.BACK, callback_data='back_to_menu')])
+    buttons = [
+        [InlineKeyboardButton(text=texts.MENU_RULES, callback_data='menu_rules')],
+        [InlineKeyboardButton(text=texts.BACK, callback_data='back_to_menu')],
+    ]
 
     return _templar_payment_inline_markup(inline_keyboard=buttons)
 
@@ -3369,33 +3282,19 @@ def get_admin_ticket_reply_cancel_keyboard(language: str = DEFAULT_LANGUAGE) -> 
     )
 
 def get_resources_keyboard(language: str = 'ru') -> InlineKeyboardMarkup:
-    """Generic resources submenu: news, guides, and website."""
+    """Resources submenu with the optional operator news channel."""
     from app.localization.texts import get_texts  # noqa: PLC0415
     texts = get_texts(language)
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text=texts.t('RESOURCES_NEWS', '📰 Новости'),
-                url='https://t.me/example',
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=texts.t('RESOURCES_GUIDES', '📖 Гайды'),
-                url='https://t.me/example',
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=texts.t('RESOURCES_WEBSITE', '🌐 Сайт'),
-                url='https://example.com',
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=texts.BACK,
-                callback_data='back_to_menu',
-            )
-        ],
-    ]
+    keyboard: list[list[InlineKeyboardButton]] = []
+    news_username = settings.NEWS_CHANNEL_USERNAME.strip().lstrip('@')
+    if news_username:
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=texts.t('RESOURCES_NEWS', '📰 Новости'),
+                    url=f'https://t.me/{news_username}',
+                )
+            ]
+        )
+    keyboard.append([InlineKeyboardButton(text=texts.BACK, callback_data='back_to_menu')])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)

@@ -30,7 +30,6 @@ def _load_payment_admin():
 
 installer = _load_installer()
 payment_admin = _load_payment_admin()
-from blank_vpn_bot_installer.banner_pack import banner_targets, install_default_banners
 
 
 CFG = {
@@ -56,6 +55,7 @@ CFG = {
     'bot_username': 'vpn_bot',
     'admin_ids': '123',
     'support_username': '@support',
+    'news_channel_username': '@news',
     'support_mode': 'both',
     'telegram_stars_rate_rub': '1.3',
     'remnawave_admin_username': 'admin',
@@ -81,6 +81,12 @@ def test_support_mode_written_to_bot_env() -> None:
     assert 'REMNAWAVE_API_URL=https://panel.example.com' not in env
     assert 'SUPPORT_USERNAME=@support' in env
     assert 'SUPPORT_SYSTEM_MODE=both' in env
+    assert 'NEWS_CHANNEL_USERNAME=@news' in env
+    assert 'DEFAULT_LANGUAGE=ru' in env
+    assert 'AVAILABLE_LANGUAGES=ru,en' in env
+    assert 'LANGUAGE_SELECTION_ENABLED=false' in env
+    assert 'SKIP_RULES_ACCEPT=true' in env
+    assert 'ENABLE_LOGO_MODE=false' in env
     assert 'TELEGRAM_STARS_ENABLED=true' in env
     assert 'YOOKASSA_ENABLED=false' in env
     assert 'DEFAULT_TARIFF_BOOTSTRAP_ENABLED=true' in env
@@ -431,15 +437,43 @@ def test_response_value_extracts_remnawave_token() -> None:
     assert installer.response_value(response, 'missing', 'token') is None
 
 
-def test_default_banner_pack_targets_all_expected_files(tmp_path: Path) -> None:
-    targets = banner_targets()
-    filenames = {filename for _slot, _language, filename in targets}
+def test_bundled_bot_has_clean_onboarding_and_navigation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    installer_source = (root / 'blank_vpn_bot_installer' / 'installer.py').read_text(encoding='utf-8')
+    keyboard_source = (root / 'bot-source' / 'app' / 'keyboards' / 'inline.py').read_text(encoding='utf-8')
+    info_source = keyboard_source.split('def get_info_menu_keyboard(', 1)[1].split(
+        'def get_happ_download_button_row(', 1
+    )[0]
+    resources_source = keyboard_source.split('def get_resources_keyboard(', 1)[1]
 
-    assert len(targets) == 22
-    assert 'main_menu_ru.jpg' in filenames
-    assert 'profile_en.jpg' in filenames
-    assert 'welcome.jpg' in filenames
-    assert install_default_banners(tmp_path, 'VPN Service', dry_run=True) == 22
+    assert 'install_default_banner_pack' not in installer_source
+    assert 'RESOURCES_GUIDES' not in resources_source
+    assert 'RESOURCES_WEBSITE' not in resources_source
+    assert 'https://t.me/example' not in resources_source
+    assert 'MENU_PRIVACY_POLICY' not in info_source
+    assert 'MENU_PUBLIC_OFFER' not in info_source
+    assert 'USER_AGREEMENT' not in info_source
+
+
+def test_legacy_default_banner_pack_is_removed_once(tmp_path: Path, monkeypatch) -> None:
+    from blank_vpn_bot_installer.banner_pack import banner_targets
+
+    cfg = {'bot_dir': str(tmp_path / 'bot')}
+    ctx = installer.InstallerContext(state={'default_banners_installed': {'count': 22}})
+    monkeypatch.setattr(installer, 'STATE_PATH', tmp_path / 'state.json')
+    banners_dir = Path(cfg['bot_dir']) / 'app' / 'assets' / 'banners'
+    cache_path = Path(cfg['bot_dir']) / 'data' / 'banner_file_ids.json'
+    banners_dir.mkdir(parents=True)
+    cache_path.parent.mkdir(parents=True)
+    banner_path = banners_dir / banner_targets()[0][2]
+    banner_path.write_bytes(b'old-default')
+    cache_path.write_text('{}', encoding='utf-8')
+
+    installer.remove_legacy_default_banner_pack(ctx, cfg)
+
+    assert not banner_path.exists()
+    assert not cache_path.exists()
+    assert ctx.state['default_banners_installed'] is False
 
 
 def test_prepare_bot_runtime_dirs_assigns_container_user(monkeypatch, tmp_path: Path) -> None:
@@ -634,6 +668,7 @@ def test_collect_answers_defaults_to_bundled_source_without_prompt() -> None:
         'bot_username': 'vpn_bot',
         'admin_ids': '123',
         'support_username': '@support',
+        'news_channel_username': '',
         'support_mode': 'both',
         'telegram_stars_rate_rub': '1.3',
         'remnawave_admin_username': 'admin',

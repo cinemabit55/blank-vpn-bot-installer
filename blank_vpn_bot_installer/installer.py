@@ -20,11 +20,9 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from blank_vpn_bot_installer.banner_pack import install_default_banners
     from blank_vpn_bot_installer.templates import caddyfile, landing_html
 except ModuleNotFoundError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from blank_vpn_bot_installer.banner_pack import install_default_banners
     from blank_vpn_bot_installer.templates import caddyfile, landing_html
 
 
@@ -209,6 +207,18 @@ def normalize_support(value: str) -> str:
     return f"@{value}"
 
 
+def normalize_optional_telegram_username(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return ""
+    value = re.sub(r"^https?://", "", value, flags=re.IGNORECASE)
+    value = re.sub(r"^(?:t\.me|telegram\.me|telegram\.dog)/", "", value, flags=re.IGNORECASE)
+    value = value.strip("/").lstrip("@")
+    if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", value):
+        raise ValueError(f"Invalid Telegram username: {value}")
+    return f"@{value}"
+
+
 def prompt(ctx: InstallerContext, key: str, label: str, default: str = "", *, secret: bool = False) -> str:
     if key in ctx.answers:
         value = str(ctx.answers[key])
@@ -378,6 +388,9 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     bot_username = bot_username.lstrip("@")
     admin_ids = prompt(ctx, "admin_ids", "Telegram admin IDs, comma-separated", "")
     support_username = normalize_support(prompt(ctx, "support_username", "Telegram support", "@support"))
+    news_channel_username = normalize_optional_telegram_username(
+        prompt(ctx, "news_channel_username", "Telegram news channel username (optional)", "")
+    )
     support_mode = choice(
         ctx,
         "support_mode",
@@ -437,6 +450,7 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
         "bot_username": bot_username,
         "admin_ids": admin_ids,
         "support_username": support_username,
+        "news_channel_username": news_channel_username,
         "support_mode": support_mode,
         "telegram_stars_rate_rub": stars_rate,
         "remnawave_admin_username": remnawave_admin_username,
@@ -532,6 +546,12 @@ def bot_env(cfg: dict[str, Any]) -> str:
             "SUPPORT_MENU_ENABLED=true",
             f"SUPPORT_SYSTEM_MODE={cfg['support_mode']}",
             "MINIAPP_TICKETS_ENABLED=true",
+            f"NEWS_CHANNEL_USERNAME={cfg.get('news_channel_username', '')}",
+            "DEFAULT_LANGUAGE=ru",
+            "AVAILABLE_LANGUAGES=ru,en",
+            "LANGUAGE_SELECTION_ENABLED=false",
+            "SKIP_RULES_ACCEPT=true",
+            "ENABLE_LOGO_MODE=false",
             "",
             "DATABASE_MODE=postgresql",
             "POSTGRES_HOST=postgres",
@@ -713,15 +733,20 @@ def write_configs(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     mark(ctx, "configs_written", True)
 
 
-def install_default_banner_pack(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
-    count = install_default_banners(
-        Path(cfg["bot_dir"]),
-        cfg["project_name"],
-        dry_run=ctx.dry_run,
-        status=status,
-        warn=warn,
-    )
-    mark(ctx, "default_banners_installed", {"count": count})
+def remove_legacy_default_banner_pack(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    if not ctx.state.get("default_banners_installed"):
+        return
+
+    from blank_vpn_bot_installer.banner_pack import banner_targets
+
+    banners_dir = Path(cfg["bot_dir"]) / "app" / "assets" / "banners"
+    cache_path = Path(cfg["bot_dir"]) / "data" / "banner_file_ids.json"
+    status("removing legacy installer-generated banner pack")
+    if not ctx.dry_run:
+        for _slot, _language, filename in banner_targets():
+            (banners_dir / filename).unlink(missing_ok=True)
+        cache_path.unlink(missing_ok=True)
+    mark(ctx, "default_banners_installed", False)
 
 
 def prepare_bot_runtime_dirs(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
@@ -1245,6 +1270,7 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         "",
         f"Telegram bot username: @{cfg['bot_username']}" if cfg["bot_username"] else "Telegram bot username: auto/unknown",
         f"Support: {cfg['support_username']} ({cfg['support_mode']})",
+        f"News channel: {cfg['news_channel_username']}" if cfg.get("news_channel_username") else "News channel: not configured",
         "Default payment: Telegram Stars",
         "",
         f"RemnaWave admin: {cfg['remnawave_admin_username']} / {cfg['remnawave_admin_password']}",
@@ -1326,7 +1352,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_dns(ctx, cfg)
     prepare_bot_source(ctx, cfg)
     write_configs(ctx, cfg)
-    install_default_banner_pack(ctx, cfg)
+    remove_legacy_default_banner_pack(ctx, cfg)
     prepare_bot_runtime_dirs(ctx, cfg)
     patch_caddy_compose(ctx, cfg)
     validate_generated_configs(ctx, cfg)

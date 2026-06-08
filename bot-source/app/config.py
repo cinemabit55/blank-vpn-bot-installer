@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     ADMIN_REPORTS_SEND_TIME: str | None = None
 
     CHANNEL_IS_REQUIRED_SUB: bool = False
+    NEWS_CHANNEL_USERNAME: str = ''
     CHANNEL_DISABLE_TRIAL_ON_UNSUBSCRIBE: bool = True
     CHANNEL_REQUIRED_FOR_ALL: bool = False
 
@@ -702,14 +703,14 @@ class Settings(BaseSettings):
     HAPP_DOWNLOAD_LINK_WINDOWS: str | None = None
     HAPP_DOWNLOAD_LINK_PC: str | None = None
     HIDE_SUBSCRIPTION_LINK: bool = False
-    ENABLE_LOGO_MODE: bool = True
+    ENABLE_LOGO_MODE: bool = False
     LOGO_FILE: str = 'vpn_logo.png'
-    SKIP_RULES_ACCEPT: bool = False
+    SKIP_RULES_ACCEPT: bool = True
     SKIP_REFERRAL_CODE: bool = False
 
     DEFAULT_LANGUAGE: str = 'ru'
-    AVAILABLE_LANGUAGES: str = 'ru,en,ua,zh,fa'
-    LANGUAGE_SELECTION_ENABLED: bool = True
+    AVAILABLE_LANGUAGES: str = 'ru,en'
+    LANGUAGE_SELECTION_ENABLED: bool = False
 
     # Округление цен при отображении (≤50 коп вниз, >50 коп вверх)
     PRICE_ROUNDING_ENABLED: bool = True

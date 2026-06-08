@@ -16,6 +16,7 @@
   "bot_username": "my_vpn_bot",
   "admin_ids": "123456789",
   "support_username": "@support",
+  "news_channel_username": "@news_channel",
   "support_mode": "both",
   "telegram_stars_rate_rub": "1.3",
   "remnawave_admin_username": "admin",

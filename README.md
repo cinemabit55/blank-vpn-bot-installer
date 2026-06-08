@@ -39,7 +39,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - RemnaWave admin account and API token
 - Default tariffs: `Базовый`, `Темные списки`, `Триал`
 - Telegram Stars as the only enabled payment method by default
-- Neutral default banner pack for the bot screens
+- Clean text-first bot interface without default Bedolaga banners
 - Non-destructive source sync on reruns, preserving runtime `data`, `logs`, and uploads
 - Payment alias: `add_payment`
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
@@ -62,6 +62,7 @@ The installer asks for:
 - Telegram bot token and optional bot username
 - Telegram admin IDs
 - Telegram support username
+- Optional Telegram news channel username
 - Support mode:
   - tickets + contact
   - tickets only
@@ -158,6 +159,6 @@ python3 scripts/build_manual_pdf.py
 
 - Cloudflare DNS upsert is implemented for A records, but advanced domain/proxy policy still needs a dedicated module.
 - External Git source mode requires repository access from the target server.
-- Default banners are intentionally neutral. Use `add_banner` to replace them with operator-provided images.
+- The bot starts without banners. Use `add_banner` only when the operator wants to add their own images.
 
 These are the next modules after the base install flow.
