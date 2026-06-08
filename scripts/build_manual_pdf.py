@@ -71,11 +71,24 @@ def register_fonts() -> tuple[str, str, str]:
         mono_name = "ManualMono"
     else:
         mono_name = "Courier"
+    pdfmetrics.registerFontFamily(
+        "ManualRegular",
+        normal="ManualRegular",
+        bold=bold_name,
+        italic="ManualRegular",
+        boldItalic=bold_name,
+    )
     return "ManualRegular", bold_name, mono_name
 
 
 def inline_markup(text: str, mono_font: str) -> str:
     escaped = html.escape(text)
+    escaped = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escaped)
+    escaped = re.sub(
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
+        r'<a href="\2" color="#2563eb">\1</a>',
+        escaped,
+    )
 
     def repl(match: re.Match[str]) -> str:
         content = match.group(1)
@@ -94,14 +107,28 @@ def flush_paragraph(buffer: list[str], story: list, body: ParagraphStyle, mono_f
     buffer.clear()
 
 
-def flush_list(items: list[str], story: list, bullet: ParagraphStyle, mono_font: str) -> None:
+def flush_list(
+    items: list[str],
+    story: list,
+    bullet: ParagraphStyle,
+    mono_font: str,
+    *,
+    ordered: bool = False,
+    start: int = 1,
+) -> None:
     if not items:
         return
     flowable_items = [
         ListItem(Paragraph(inline_markup(item, mono_font), bullet), leftIndent=4 * mm)
         for item in items
     ]
-    story.append(ListFlowable(flowable_items, bulletType="bullet", leftIndent=6 * mm))
+    list_options = {
+        "bulletType": "1" if ordered else "bullet",
+        "leftIndent": 6 * mm,
+    }
+    if ordered:
+        list_options["start"] = str(start)
+    story.append(ListFlowable(flowable_items, **list_options))
     story.append(Spacer(1, 3 * mm))
     items.clear()
 
@@ -110,8 +137,23 @@ def build_story(markdown: str, styles: dict[str, ParagraphStyle], mono_font: str
     story: list = []
     paragraph_buffer: list[str] = []
     list_items: list[str] = []
+    list_ordered: bool | None = None
+    list_start = 1
     code_buffer: list[str] = []
     in_code = False
+
+    def flush_pending_list() -> None:
+        nonlocal list_ordered, list_start
+        flush_list(
+            list_items,
+            story,
+            styles["bullet"],
+            mono_font,
+            ordered=bool(list_ordered),
+            start=list_start,
+        )
+        list_ordered = None
+        list_start = 1
 
     for raw_line in markdown.splitlines():
         line = raw_line.rstrip()
@@ -124,7 +166,7 @@ def build_story(markdown: str, styles: dict[str, ParagraphStyle], mono_font: str
                 in_code = False
             else:
                 flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
-                flush_list(list_items, story, styles["bullet"], mono_font)
+                flush_pending_list()
                 in_code = True
             continue
 
@@ -134,13 +176,13 @@ def build_story(markdown: str, styles: dict[str, ParagraphStyle], mono_font: str
 
         if not line.strip():
             flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
-            flush_list(list_items, story, styles["bullet"], mono_font)
+            flush_pending_list()
             continue
 
         heading = re.match(r"^(#{1,3})\s+(.+)$", line)
         if heading:
             flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
-            flush_list(list_items, story, styles["bullet"], mono_font)
+            flush_pending_list()
             level = len(heading.group(1))
             style_name = "title" if level == 1 else "heading2" if level == 2 else "heading3"
             story.append(Paragraph(inline_markup(heading.group(2), mono_font), styles[style_name]))
@@ -150,14 +192,38 @@ def build_story(markdown: str, styles: dict[str, ParagraphStyle], mono_font: str
         bullet = re.match(r"^-\s+(.+)$", line)
         if bullet:
             flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
+            if list_ordered is True:
+                flush_pending_list()
+            list_ordered = False
+            list_start = 1
             list_items.append(bullet.group(1))
             continue
 
+        ordered = re.match(r"^(\d+)\.\s+(.+)$", line)
+        if ordered:
+            flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
+            if list_ordered is False:
+                flush_pending_list()
+            if list_ordered is not True:
+                list_start = int(ordered.group(1))
+            list_ordered = True
+            list_items.append(ordered.group(2))
+            continue
+
+        flush_pending_list()
         paragraph_buffer.append(line)
 
     flush_paragraph(paragraph_buffer, story, styles["body"], mono_font)
-    flush_list(list_items, story, styles["bullet"], mono_font)
+    flush_pending_list()
     return story
+
+
+def draw_page_number(canvas, doc) -> None:
+    canvas.saveState()
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(colors.HexColor("#6b7280"))
+    canvas.drawCentredString(A4[0] / 2, 8 * mm, str(doc.page))
+    canvas.restoreState()
 
 
 def main() -> int:
@@ -223,7 +289,7 @@ def main() -> int:
         title="Blank VPN Bot Installer Operator Manual",
     )
     story = build_story(SOURCE.read_text(encoding="utf-8"), styles, font_mono)
-    doc.build(story)
+    doc.build(story, onFirstPage=draw_page_number, onLaterPages=draw_page_number)
     print(TARGET)
     return 0
 

@@ -149,6 +149,8 @@ See [docs/answers.example.json](docs/answers.example.json).
 - Markdown: [docs/operator-manual.md](docs/operator-manual.md)
 - PDF: [docs/operator-manual.pdf](docs/operator-manual.pdf)
 
+The manual is written as a beginner-friendly end-to-end guide: choosing a clean VPS, buying and configuring a domain, creating a Telegram bot, filling every installer prompt, checking the deployment, adding nodes, and troubleshooting.
+
 Rebuild the PDF after editing the Markdown:
 
 ```bash
