@@ -817,22 +817,29 @@ def response_value(response: dict[str, Any], *path: str) -> Any:
 
 
 def docker_container_health(container_name: str) -> str:
-    result = subprocess.run(
-        [
-            "docker",
-            "inspect",
-            "--format",
-            "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}",
-            container_name,
-        ],
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}",
+                container_name,
+            ],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError:
+        return "missing"
     if result.returncode != 0:
         return "missing"
     return result.stdout.strip() or "unknown"
+
+
+def docker_container_ready(container_name: str) -> bool:
+    return docker_container_health(container_name) in {"healthy", "running"}
 
 
 def wait_for_remnawave_api(
@@ -939,22 +946,45 @@ def docker_up_application(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     cabinet_dir = Path(cfg["cabinet_dir"])
     caddy_dir = Path(cfg["caddy_dir"])
 
-    run_with_retries(
-        ["docker", "compose", "up", "-d", "remnawave-subscription-page"],
-        cwd=remnawave_dir,
-        dry_run=ctx.dry_run,
+    if not ctx.dry_run and docker_container_ready("remnawave-subscription-page"):
+        status("subscription page is already running; skipping image pull")
+    else:
+        status("pulling subscription page image; interrupted downloads will be retried")
+        run_with_retries(
+            ["docker", "compose", "pull", "remnawave-subscription-page"],
+            cwd=remnawave_dir,
+            dry_run=ctx.dry_run,
+        )
+        run_with_retries(
+            ["docker", "compose", "up", "-d", "--pull", "never", "remnawave-subscription-page"],
+            cwd=remnawave_dir,
+            dry_run=ctx.dry_run,
+        )
+
+    bot_ready = all(
+        docker_container_ready(name)
+        for name in ("remnawave_bot_db", "remnawave_bot_redis", "remnawave_bot")
     )
+    if not ctx.dry_run and bot_ready:
+        status("bot stack is already running; skipping pull/build")
+    else:
+        status("pulling bot database and Redis images; interrupted downloads will be retried")
+        run_with_retries(["docker", "compose", "pull", "postgres", "redis"], cwd=bot_dir, dry_run=ctx.dry_run)
+        status("building bot image")
+        run_with_retries(["docker", "compose", "build", "bot"], cwd=bot_dir, dry_run=ctx.dry_run)
+        run_with_retries(["docker", "compose", "up", "-d", "--pull", "never"], cwd=bot_dir, dry_run=ctx.dry_run)
 
-    status("pulling bot database and Redis images; interrupted downloads will be retried")
-    run_with_retries(["docker", "compose", "pull", "postgres", "redis"], cwd=bot_dir, dry_run=ctx.dry_run)
-    status("building bot image")
-    run_with_retries(["docker", "compose", "build", "bot"], cwd=bot_dir, dry_run=ctx.dry_run)
-    run_with_retries(["docker", "compose", "up", "-d"], cwd=bot_dir, dry_run=ctx.dry_run)
+    if not ctx.dry_run and docker_container_ready("cabinet_frontend"):
+        status("cabinet is already running; skipping build")
+    else:
+        status("building cabinet image")
+        run_with_retries(["docker", "compose", "build"], cwd=cabinet_dir, dry_run=ctx.dry_run)
+        run_with_retries(["docker", "compose", "up", "-d", "--pull", "never"], cwd=cabinet_dir, dry_run=ctx.dry_run)
 
-    status("building cabinet image")
-    run_with_retries(["docker", "compose", "build"], cwd=cabinet_dir, dry_run=ctx.dry_run)
-    run_with_retries(["docker", "compose", "up", "-d"], cwd=cabinet_dir, dry_run=ctx.dry_run)
-    run_with_retries(["docker", "compose", "up", "-d"], cwd=caddy_dir, dry_run=ctx.dry_run)
+    if not ctx.dry_run and docker_container_ready("caddy-remnawave"):
+        status("Caddy is already running; skipping start")
+    else:
+        run_with_retries(["docker", "compose", "up", "-d", "--pull", "never"], cwd=caddy_dir, dry_run=ctx.dry_run)
     mark(ctx, "application_docker_up", True)
 
 

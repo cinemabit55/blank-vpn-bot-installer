@@ -206,14 +206,38 @@ def test_application_start_splits_pull_build_and_up(monkeypatch, tmp_path: Path)
         'run_with_retries',
         lambda args, *, cwd=None, **_kwargs: calls.append((args, cwd)),
     )
+    monkeypatch.setattr(installer, 'docker_container_ready', lambda _name: False)
     monkeypatch.setattr(installer, 'mark', lambda *_args, **_kwargs: None)
 
     installer.docker_up_application(installer.InstallerContext(), cfg)
 
+    assert (['docker', 'compose', 'pull', 'remnawave-subscription-page'], tmp_path / 'remnawave') in calls
     assert (['docker', 'compose', 'pull', 'postgres', 'redis'], tmp_path / 'bot') in calls
     assert (['docker', 'compose', 'build', 'bot'], tmp_path / 'bot') in calls
-    assert (['docker', 'compose', 'up', '-d'], tmp_path / 'bot') in calls
+    assert (['docker', 'compose', 'up', '-d', '--pull', 'never'], tmp_path / 'bot') in calls
     assert (['docker', 'compose', 'build'], tmp_path / 'cabinet') in calls
+
+
+def test_application_start_skips_already_running_stacks(monkeypatch, tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+    cfg = {
+        'bot_dir': str(tmp_path / 'bot'),
+        'remnawave_dir': str(tmp_path / 'remnawave'),
+        'cabinet_dir': str(tmp_path / 'cabinet'),
+        'caddy_dir': str(tmp_path / 'caddy'),
+    }
+
+    monkeypatch.setattr(installer, 'docker_container_ready', lambda _name: True)
+    monkeypatch.setattr(
+        installer,
+        'run_with_retries',
+        lambda args, **_kwargs: calls.append(args),
+    )
+    monkeypatch.setattr(installer, 'mark', lambda *_args, **_kwargs: None)
+
+    installer.docker_up_application(installer.InstallerContext(), cfg)
+
+    assert calls == []
 
 
 def test_docs_use_temp_file_for_interactive_bootstrap() -> None:
