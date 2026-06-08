@@ -236,6 +236,14 @@ def test_bundled_bot_source_bounds_ssh_bootstrap_connects() -> None:
     assert "'ServerAliveCountMax=2'" in layer1
 
 
+def test_bundled_bot_source_keeps_ru_edge_transit_user_on_full_delete() -> None:
+    root = Path(__file__).resolve().parents[1]
+    cli = (root / 'bot-source' / 'app' / 'templar_node' / 'cli.py').read_text(encoding='utf-8')
+
+    assert 'from app.templar_node.schemas import NodeRole' in cli
+    assert 'config.role != NodeRole.RU_EDGE' in cli
+
+
 def test_bundled_bot_source_bootstraps_default_tariffs() -> None:
     root = Path(__file__).resolve().parents[1]
     config = root / 'bot-source' / 'app' / 'config.py'

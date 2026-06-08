@@ -82,6 +82,7 @@ from app.templar_node.rotation import (
     write_sni_changed_config,
 )
 from app.templar_node.routes import RouteOverrideError, RouteOverrideStore
+from app.templar_node.schemas import NodeRole
 from app.templar_node.secrets import LocalSecretStore, SecretStoreError
 from app.templar_node.simulation import FakeEnvironmentStore, SimulationError, simulate_onboarding
 from app.templar_node.state import LAYER2B_CHECKPOINTS, NodeStateStore, StateStoreError
@@ -2251,7 +2252,7 @@ def _apply_decommission_full_defaults(args: argparse.Namespace, config_path: Pat
         args.delete_config_file = config_path
     args.delete_local_files = True
     args.delete_secrets = True
-    args.delete_transit_service_user = True
+    args.delete_transit_service_user = bool(args.delete_transit_service_user or config.role != NodeRole.RU_EDGE)
     args.disable_empty_monitor = True
     if not args.skip_dns_cleanup:
         args.delete_dns = True
