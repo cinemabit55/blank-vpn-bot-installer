@@ -524,9 +524,8 @@ def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> 
     assert "transport': 'xhttp'" not in builder
     assert "STREAM_KEEPALIVE_SOCKOPT" in profile
     assert "'sockopt': _stream_keepalive_sockopt()" in profile
-    assert "TELEGRAM_WARP_IPS = ('geoip:telegram',)" in profile
-    assert "rules.extend(_telegram_warp_rules(inbound_tags=inbound_tags, outbound_tag=warp_tag))" in profile
-    assert "'outboundTag': outbound_tag" in profile
+    assert 'TELEGRAM_WARP_IPS' not in profile
+    assert '_telegram_warp_rules' not in profile
     assert "'network': 'udp', 'outboundTag': DIRECT_TAG" in profile
     assert "'connIdle': 1800" in profile
     assert "'handshake': 10" in profile

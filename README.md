@@ -45,7 +45,7 @@ sudo bash scripts/install_blank_vpn_bot.sh
 - Bot banner aliases: `add_banner`, `list_banners`, `reset_banner`
 - Node aliases from the bot repo: `add_direct`, `add_cascade`, `add_inbound`, `add_routes`, `delete_node`, `change_sni`
 - Dedicated node-command Python environment in `/opt/bedolaga/.venv-templar-node`
-- Node profiles generated with TCP REALITY by default, server keepalive, WARP routing, RU-direct routing, and Discord voice direct rules
+- Node profiles generated with TCP REALITY by default, server keepalive, WARP routing, RU-direct routing, and direct UDP for reliable Discord and Telegram calls
 - Generated Docker Compose and Caddy config validation before containers are started
 
 ## Required Input
