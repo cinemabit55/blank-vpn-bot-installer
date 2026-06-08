@@ -27,7 +27,7 @@
 На свежем сервере:
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh)
+curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh | sudo bash
 ```
 
 Если репозиторий установщика private, нужен GitHub token с доступом на чтение:

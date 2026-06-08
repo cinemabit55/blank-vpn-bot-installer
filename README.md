@@ -9,7 +9,7 @@ The installer is self-contained by default: it uses the bundled `bot-source/` sn
 On a fresh Ubuntu server:
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh)
+curl -fsSL https://raw.githubusercontent.com/cinemabit55/blank-vpn-bot-installer/main/scripts/install_blank_vpn_bot.sh | sudo bash
 ```
 
 For a private repository, pass a GitHub token that can read this repository:
