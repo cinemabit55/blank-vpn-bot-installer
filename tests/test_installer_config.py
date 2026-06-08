@@ -193,6 +193,27 @@ def test_random_remnawave_password_matches_panel_rules() -> None:
     assert any(char.isdigit() for char in password)
 
 
+def test_prompt_domain_reprompts_after_empty_value(monkeypatch, capsys) -> None:
+    answers = iter(['', 'example.com'])
+    monkeypatch.setattr('builtins.input', lambda _prompt: next(answers))
+
+    value = installer.prompt_domain(installer.InstallerContext(), 'root_domain', 'Root domain')
+
+    assert value == 'example.com'
+    assert 'Domain is required' in capsys.readouterr().out
+
+
+def test_prompt_domain_rejects_invalid_answers_file_value() -> None:
+    ctx = installer.InstallerContext(answers={'root_domain': ''})
+
+    try:
+        installer.prompt_domain(ctx, 'root_domain', 'Root domain')
+    except ValueError as exc:
+        assert str(exc) == 'Domain is required'
+    else:
+        raise AssertionError('invalid non-interactive domain should fail')
+
+
 def test_response_value_extracts_remnawave_token() -> None:
     response = {'response': {'token': 'rw-token', 'accessToken': 'jwt-token'}}
 

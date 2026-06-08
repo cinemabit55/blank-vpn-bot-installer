@@ -164,6 +164,8 @@ def normalize_domain(value: str) -> str:
     value = value.strip().lower()
     value = re.sub(r"^https?://", "", value)
     value = value.strip("/")
+    if not value:
+        raise ValueError("Domain is required")
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]*[a-z0-9]", value):
         raise ValueError(f"Invalid domain: {value}")
     return value
@@ -194,6 +196,16 @@ def prompt(ctx: InstallerContext, key: str, label: str, default: str = "", *, se
     else:
         value = input(f"{label}{suffix}: ").strip()
     return value or default
+
+
+def prompt_domain(ctx: InstallerContext, key: str, label: str, default: str = "") -> str:
+    while True:
+        try:
+            return normalize_domain(prompt(ctx, key, label, default))
+        except ValueError as exc:
+            if key in ctx.answers:
+                raise
+            print(f"{exc}. Enter a domain such as example.com, without https://.")
 
 
 def choice(ctx: InstallerContext, key: str, label: str, options: list[tuple[str, str]], default: str) -> str:
@@ -288,11 +300,11 @@ def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
     project_name = prompt(ctx, "project_name", "Project display name", "VPN Service")
 
     public_ip = prompt(ctx, "server_ip", "Server public IPv4", detect_public_ip())
-    root_domain = normalize_domain(prompt(ctx, "root_domain", "Root domain, e.g. example.com"))
-    panel_domain = normalize_domain(prompt(ctx, "panel_domain", "Panel domain", f"panel.{root_domain}"))
-    sub_domain = normalize_domain(prompt(ctx, "sub_domain", "Subscription domain", f"sub.{root_domain}"))
-    cabinet_domain = normalize_domain(prompt(ctx, "cabinet_domain", "Cabinet domain", f"cabinet.{root_domain}"))
-    api_domain = normalize_domain(prompt(ctx, "api_domain", "API/webhook domain", f"api.{root_domain}"))
+    root_domain = prompt_domain(ctx, "root_domain", "Root domain, e.g. example.com")
+    panel_domain = prompt_domain(ctx, "panel_domain", "Panel domain", f"panel.{root_domain}")
+    sub_domain = prompt_domain(ctx, "sub_domain", "Subscription domain", f"sub.{root_domain}")
+    cabinet_domain = prompt_domain(ctx, "cabinet_domain", "Cabinet domain", f"cabinet.{root_domain}")
+    api_domain = prompt_domain(ctx, "api_domain", "API/webhook domain", f"api.{root_domain}")
     le_email = prompt(ctx, "le_email", "Let's Encrypt email", f"admin@{root_domain}")
 
     dns_mode = choice(
