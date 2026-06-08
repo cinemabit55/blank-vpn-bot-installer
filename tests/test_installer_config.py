@@ -226,6 +226,16 @@ def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> 
     assert "body['host'] = ''" in remnawave
 
 
+def test_bundled_bot_source_bounds_ssh_bootstrap_connects() -> None:
+    root = Path(__file__).resolve().parents[1]
+    layer1 = (root / 'bot-source' / 'app' / 'templar_node' / 'layer1.py').read_text(encoding='utf-8')
+
+    assert "'ConnectTimeout=20'" in layer1
+    assert "'ConnectionAttempts=1'" in layer1
+    assert "'ServerAliveInterval=15'" in layer1
+    assert "'ServerAliveCountMax=2'" in layer1
+
+
 def test_bundled_bot_source_bootstraps_default_tariffs() -> None:
     root = Path(__file__).resolve().parents[1]
     config = root / 'bot-source' / 'app' / 'config.py'

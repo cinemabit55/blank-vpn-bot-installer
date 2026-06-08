@@ -22,6 +22,16 @@ class Layer1Error(RuntimeError):
 
 
 ProgressReporter = Callable[[str], None]
+SSH_CONNECT_OPTIONS = (
+    '-o',
+    'ConnectTimeout=20',
+    '-o',
+    'ConnectionAttempts=1',
+    '-o',
+    'ServerAliveInterval=15',
+    '-o',
+    'ServerAliveCountMax=2',
+)
 
 
 @dataclass(frozen=True)
@@ -246,6 +256,7 @@ class SshpassRootClient:
             'scp',
             '-P',
             str(self.port),
+            *_ssh_connect_options(),
             '-o',
             'StrictHostKeyChecking=accept-new',
             '-o',
@@ -264,6 +275,7 @@ class SshpassRootClient:
             'ssh',
             '-p',
             str(self.port),
+            *_ssh_connect_options(),
             '-o',
             'StrictHostKeyChecking=accept-new',
             '-o',
@@ -286,6 +298,7 @@ class SshpassRootClient:
                 str(key_path),
                 '-p',
                 str(verify_port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -323,6 +336,7 @@ class RootKeyClient:
                 str(key_path),
                 '-P',
                 str(self.port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -348,6 +362,7 @@ class RootKeyClient:
                 str(key_path),
                 '-p',
                 str(self.port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -373,6 +388,7 @@ class RootKeyClient:
                 str(key_path),
                 '-p',
                 str(verify_port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -414,6 +430,7 @@ class AdminKeySudoClient:
                 str(key_path),
                 '-P',
                 str(self.port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -439,6 +456,7 @@ class AdminKeySudoClient:
                 str(key_path),
                 '-p',
                 str(self.port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -464,6 +482,7 @@ class AdminKeySudoClient:
                 str(key_path),
                 '-p',
                 str(verify_port),
+                *_ssh_connect_options(),
                 '-o',
                 'BatchMode=yes',
                 '-o',
@@ -510,6 +529,10 @@ def _write_temp_private_key(private_key: str) -> Path:
         key_path = Path(key_file.name)
     key_path.chmod(0o600)
     return key_path
+
+
+def _ssh_connect_options() -> list[str]:
+    return list(SSH_CONNECT_OPTIONS)
 
 
 def _read_admin_public_key(secret_store: LocalSecretStore, ref: str) -> str:
