@@ -259,7 +259,8 @@ change_sni
 Проверь:
 
 - `https://panel.example.com` открывает RemnaWave;
-- `https://sub.example.com/connect` открывает страницу подписки;
+- реальная пользовательская ссылка вида `https://sub.example.com/connect/<short-uuid>` открывает страницу подписки;
+- базовый адрес `/connect` без пользовательского `short-uuid` может намеренно разрывать соединение — это штатная защита RemnaWave Subscription Page;
 - `https://cabinet.example.com` открывает кабинет;
 - бот отвечает в Telegram;
 - `docker compose ps` в `/opt/bedolaga`, `/opt/remnawave`, `/opt/caddy-remnawave` без постоянных рестартов.

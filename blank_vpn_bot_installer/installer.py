@@ -1239,7 +1239,7 @@ def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         f"Cabinet dir: {cfg['cabinet_dir']}",
         "",
         f"Panel: https://{cfg['panel_domain']}",
-        f"Subscription page: https://{cfg['sub_domain']}/connect",
+        f"Subscription URL base: https://{cfg['sub_domain']}/connect/<user-short-uuid>",
         f"Cabinet: https://{cfg['cabinet_domain']}",
         f"API/webhooks: https://{cfg['api_domain']}",
         "",

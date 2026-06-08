@@ -454,6 +454,18 @@ def test_prepare_bot_runtime_dirs_assigns_container_user(monkeypatch, tmp_path: 
     assert calls == [['chown', '-R', '1000:1000', *(str(path) for path in runtime_dirs)]]
 
 
+def test_install_summary_labels_subscription_base_as_user_specific(monkeypatch, tmp_path: Path) -> None:
+    cfg = dict(CFG)
+    summary_path = tmp_path / 'summary.txt'
+    monkeypatch.setattr(installer, 'SUMMARY_PATH', summary_path)
+
+    installer.write_summary(installer.InstallerContext(), cfg)
+
+    rendered = summary_path.read_text(encoding='utf-8')
+    assert 'Subscription URL base: https://sub.example.com/connect/<user-short-uuid>' in rendered
+    assert 'Subscription page: https://sub.example.com/connect' not in rendered
+
+
 def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     root = Path(__file__).resolve().parents[1]
     schemas = root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py'
