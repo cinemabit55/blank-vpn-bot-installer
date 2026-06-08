@@ -724,6 +724,17 @@ def install_default_banner_pack(ctx: InstallerContext, cfg: dict[str, Any]) -> N
     mark(ctx, "default_banners_installed", {"count": count})
 
 
+def prepare_bot_runtime_dirs(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
+    bot_dir = Path(cfg["bot_dir"])
+    runtime_dirs = [bot_dir / name for name in ("data", "logs", "uploads", "locales")]
+    status("preparing writable bot runtime directories")
+    if ctx.dry_run:
+        return
+    for path in runtime_dirs:
+        path.mkdir(parents=True, exist_ok=True)
+    run(["chown", "-R", "1000:1000", *(str(path) for path in runtime_dirs)])
+
+
 def patch_caddy_compose(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     path = Path(cfg["caddy_dir"]) / "docker-compose.yml"
     if ctx.dry_run:
@@ -1311,6 +1322,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_bot_source(ctx, cfg)
     write_configs(ctx, cfg)
     install_default_banner_pack(ctx, cfg)
+    prepare_bot_runtime_dirs(ctx, cfg)
     patch_caddy_compose(ctx, cfg)
     validate_generated_configs(ctx, cfg)
     open_firewall(ctx)

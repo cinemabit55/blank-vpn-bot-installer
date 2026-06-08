@@ -440,6 +440,18 @@ def test_default_banner_pack_targets_all_expected_files(tmp_path: Path) -> None:
     assert install_default_banners(tmp_path, 'VPN Service', dry_run=True) == 22
 
 
+def test_prepare_bot_runtime_dirs_assigns_container_user(monkeypatch, tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+    cfg = {'bot_dir': str(tmp_path / 'bot')}
+    monkeypatch.setattr(installer, 'run', lambda args, **_kwargs: calls.append(args))
+
+    installer.prepare_bot_runtime_dirs(installer.InstallerContext(), cfg)
+
+    runtime_dirs = [tmp_path / 'bot' / name for name in ('data', 'logs', 'uploads', 'locales')]
+    assert all(path.is_dir() for path in runtime_dirs)
+    assert calls == [['chown', '-R', '1000:1000', *(str(path) for path in runtime_dirs)]]
+
+
 def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     root = Path(__file__).resolve().parents[1]
     schemas = root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py'
