@@ -116,6 +116,43 @@ def test_bootstrap_script_keeps_prompts_interactive_when_piped() -> None:
     assert 'blank_vpn_bot_installer/installer.py' in script
 
 
+def test_bundled_remnawave_compose_pins_stable_backend_major() -> None:
+    root = Path(__file__).resolve().parents[1]
+    compose = (root / 'bot-source' / 'ops' / 'remnawave' / 'docker-compose.yml').read_text(encoding='utf-8')
+
+    assert 'image: remnawave/backend:2' in compose
+    assert 'image: remnawave/backend:latest' not in compose
+
+
+def test_remnawave_api_wait_restarts_unhealthy_backend_once(monkeypatch, tmp_path: Path) -> None:
+    requests = 0
+    restarts: list[list[str]] = []
+
+    def fake_request(*_args, **_kwargs):
+        nonlocal requests
+        requests += 1
+        if requests <= 18:
+            raise OSError('API unavailable')
+        return {'response': {'isRegisterAllowed': True}}
+
+    def fake_health(container_name: str) -> str:
+        return 'healthy' if container_name == 'remnawave-db' else 'starting'
+
+    def fake_run(args, **_kwargs):
+        restarts.append(args)
+        return None
+
+    monkeypatch.setattr(installer, 'remnawave_request', fake_request)
+    monkeypatch.setattr(installer, 'docker_container_health', fake_health)
+    monkeypatch.setattr(installer, 'run', fake_run)
+    monkeypatch.setattr(installer.time, 'sleep', lambda _seconds: None)
+
+    result = installer.wait_for_remnawave_api(installer.InstallerContext(), remnawave_dir=tmp_path)
+
+    assert result == {'response': {'isRegisterAllowed': True}}
+    assert restarts == [['docker', 'compose', 'restart', 'remnawave']]
+
+
 def test_docs_use_temp_file_for_interactive_bootstrap() -> None:
     root = Path(__file__).resolve().parents[1]
     docs = [

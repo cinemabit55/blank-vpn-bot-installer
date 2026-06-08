@@ -40,7 +40,7 @@ services:
 
 
     remnawave:
-        image: remnawave/backend:latest
+        image: remnawave/backend:2
         container_name: 'remnawave'
         hostname: remnawave
         <<: [*common, *logging, *env]

@@ -783,16 +783,52 @@ def response_value(response: dict[str, Any], *path: str) -> Any:
     return current
 
 
-def wait_for_remnawave_api(ctx: InstallerContext) -> dict[str, Any] | None:
+def docker_container_health(container_name: str) -> str:
+    result = subprocess.run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}",
+            container_name,
+        ],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        return "missing"
+    return result.stdout.strip() or "unknown"
+
+
+def wait_for_remnawave_api(
+    ctx: InstallerContext,
+    *,
+    remnawave_dir: Path = DEFAULT_REMNAWAVE_DIR,
+) -> dict[str, Any] | None:
     if ctx.dry_run or ctx.skip_docker_up:
         return None
     status("waiting for RemnaWave API")
     last_error = ""
-    for _ in range(120):
+    restarted = False
+    for attempt in range(120):
         try:
             return remnawave_request("GET", "/api/auth/status", timeout=5)
         except Exception as exc:
             last_error = str(exc)
+            elapsed = (attempt + 1) * 5
+            if elapsed % 30 == 0:
+                database_health = docker_container_health("remnawave-db")
+                backend_health = docker_container_health("remnawave")
+                status(
+                    f"still waiting for RemnaWave API ({elapsed}s); "
+                    f"database={database_health}, backend={backend_health}"
+                )
+                if elapsed >= 90 and not restarted and database_health == "healthy" and backend_health != "healthy":
+                    warn("RemnaWave database is healthy but backend API is not ready; restarting backend once")
+                    run(["docker", "compose", "restart", "remnawave"], cwd=remnawave_dir)
+                    restarted = True
             time.sleep(5)
     die(f"RemnaWave API did not become ready within 10 minutes: {last_error}")
 
@@ -837,7 +873,7 @@ def bootstrap_remnawave_api_token(ctx: InstallerContext, cfg: dict[str, Any]) ->
         return
 
     status("bootstrapping RemnaWave API token")
-    status_response = wait_for_remnawave_api(ctx)
+    status_response = wait_for_remnawave_api(ctx, remnawave_dir=Path(cfg["remnawave_dir"]))
     admin_jwt = remnawave_auth_jwt(cfg, status_response)
     token_response = remnawave_request(
         "POST",
