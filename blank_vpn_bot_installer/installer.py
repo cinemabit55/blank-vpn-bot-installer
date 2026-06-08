@@ -541,7 +541,7 @@ def bot_env(cfg: dict[str, Any]) -> str:
             f"POSTGRES_PASSWORD={cfg['postgres_password']}",
             "REDIS_URL=redis://redis:6379/0",
             "",
-            f"REMNAWAVE_API_URL=https://{cfg['panel_domain']}",
+            "REMNAWAVE_API_URL=http://remnawave:3000",
             f"REMNAWAVE_API_KEY={api_key}",
             "REMNAWAVE_AUTH_TYPE=api_key",
             "REMNAWAVE_USER_DELETE_MODE=delete",

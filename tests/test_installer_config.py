@@ -77,6 +77,8 @@ CFG = {
 def test_support_mode_written_to_bot_env() -> None:
     env = installer.bot_env(CFG)
 
+    assert 'REMNAWAVE_API_URL=http://remnawave:3000' in env
+    assert 'REMNAWAVE_API_URL=https://panel.example.com' not in env
     assert 'SUPPORT_USERNAME=@support' in env
     assert 'SUPPORT_SYSTEM_MODE=both' in env
     assert 'TELEGRAM_STARS_ENABLED=true' in env
