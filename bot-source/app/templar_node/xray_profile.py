@@ -44,6 +44,7 @@ DISCORD_DIRECT_DOMAINS = (
 )
 DISCORD_DIRECT_IPS = ('66.22.192.0/18',)
 DISCORD_VOICE_UDP_PORTS = '50000-65535'
+TELEGRAM_WARP_IPS = ('geoip:telegram',)
 STREAM_KEEPALIVE_SOCKOPT = {
     'tcpKeepAliveIdle': 30,
     'tcpKeepAliveInterval': 10,
@@ -388,9 +389,11 @@ def _render_routing(config: NodeConfig, *, route_overrides: RouteOverrides | Non
     elif config.warp.mode == WarpMode.XRAY_NATIVE:
         inbound_tags = _warp_inbound_tags(config, public_tag)
         warp_tag = config.warp.outbound_tag or 'WARP_OUT'
+        if config.country_code == 'RU':
+            rules.extend(_telegram_warp_rules(inbound_tags=inbound_tags, outbound_tag=warp_tag))
         if config.warp.discord_direct:
-            # Discord and Telegram calls use dynamically selected UDP
-            # endpoints, so route UDP direct while keeping TCP through WARP.
+            # Voice services use dynamically selected UDP endpoints. Keep
+            # Russian Telegram on WARP, then route the remaining UDP direct.
             rules.append({'type': 'field', 'inboundTag': inbound_tags, 'network': 'udp', 'outboundTag': DIRECT_TAG})
             rules.extend(_discord_direct_rules(inbound_tags=inbound_tags))
         rules.append({'type': 'field', 'inboundTag': inbound_tags, 'outboundTag': warp_tag})
@@ -439,6 +442,18 @@ def _discord_direct_rules(*, inbound_tags: list[str]) -> list[dict[str, Any]]:
             'network': 'udp',
             'port': DISCORD_VOICE_UDP_PORTS,
             'outboundTag': DIRECT_TAG,
+        },
+    ]
+
+
+def _telegram_warp_rules(*, inbound_tags: list[str], outbound_tag: str) -> list[dict[str, Any]]:
+    return [
+        {
+            'type': 'field',
+            'inboundTag': inbound_tags,
+            'network': 'udp',
+            'ip': list(TELEGRAM_WARP_IPS),
+            'outboundTag': outbound_tag,
         },
     ]
 
