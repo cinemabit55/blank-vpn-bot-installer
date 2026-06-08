@@ -1148,20 +1148,43 @@ def setup_dns(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     mark(ctx, "dns_done", True)
 
 
+def bot_health_probe() -> subprocess.CompletedProcess[str] | None:
+    probe_code = (
+        "import os, urllib.request; "
+        "request = urllib.request.Request("
+        "'http://127.0.0.1:8080/health', "
+        "headers={'X-API-Key': os.environ['WEB_API_DEFAULT_TOKEN']}"
+        "); "
+        "urllib.request.urlopen(request, timeout=3).read()"
+    )
+    try:
+        return subprocess.run(
+            ["docker", "exec", "remnawave_bot", "python", "-c", probe_code],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError:
+        return None
+
+
 def wait_for_health(ctx: InstallerContext) -> None:
     if ctx.dry_run or ctx.skip_docker_up:
         return
     status("waiting for bot health endpoint")
-    for _ in range(60):
-        probe = run(
-            ["docker", "exec", "remnawave_bot", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"],
-            check=False,
-            capture=True,
-        )
-        if probe.returncode == 0:
+    for attempt in range(60):
+        health = docker_container_health("remnawave_bot")
+        probe = bot_health_probe()
+        if health == "healthy" or (probe is not None and probe.returncode == 0):
+            status("bot health endpoint is ready")
             return
+        if attempt % 6 == 0:
+            status(f"bot container health: {health}; still waiting")
         time.sleep(5)
     warn("Bot health endpoint did not become ready within 5 minutes")
+    run(["docker", "inspect", "--format", "{{json .State}}", "remnawave_bot"], check=False)
+    run(["docker", "logs", "--tail", "80", "remnawave_bot"], check=False)
 
 
 def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:

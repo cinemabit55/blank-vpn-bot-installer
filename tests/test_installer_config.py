@@ -240,6 +240,32 @@ def test_application_start_skips_already_running_stacks(monkeypatch, tmp_path: P
     assert calls == []
 
 
+def test_bot_health_probe_supplies_api_key_from_container_env(monkeypatch) -> None:
+    captured: list[str] = []
+
+    def fake_run(args, **_kwargs):
+        captured.extend(args)
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(installer.subprocess, 'run', fake_run)
+
+    result = installer.bot_health_probe()
+
+    assert result is not None
+    assert result.returncode == 0
+    probe_code = captured[-1]
+    assert "headers={'X-API-Key': os.environ['WEB_API_DEFAULT_TOKEN']}" in probe_code
+
+
+def test_wait_for_health_accepts_healthy_docker_healthcheck(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(installer, 'docker_container_health', lambda _name: 'healthy')
+    monkeypatch.setattr(installer, 'bot_health_probe', lambda: None)
+
+    installer.wait_for_health(installer.InstallerContext())
+
+    assert 'bot health endpoint is ready' in capsys.readouterr().out
+
+
 def test_docs_use_temp_file_for_interactive_bootstrap() -> None:
     root = Path(__file__).resolve().parents[1]
     docs = [
