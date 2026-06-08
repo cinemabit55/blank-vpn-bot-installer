@@ -282,6 +282,7 @@ def test_remnawave_request_supplies_required_https_proxy_headers(monkeypatch) ->
     assert result == {'response': {'isRegisterAllowed': True}}
     assert captured['headers']['x-forwarded-for'] == '127.0.0.1'
     assert captured['headers']['x-forwarded-proto'] == 'https'
+    assert captured['headers']['x-remnawave-client-type'] == 'browser'
     assert captured['timeout'] == 5
 
 

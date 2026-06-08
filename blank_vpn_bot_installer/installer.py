@@ -767,6 +767,7 @@ def remnawave_request(
         "Accept": "application/json",
         "X-Forwarded-For": "127.0.0.1",
         "X-Forwarded-Proto": "https",
+        "X-Remnawave-Client-Type": "browser",
     }
     if bearer:
         headers["Authorization"] = f"Bearer {bearer}"
