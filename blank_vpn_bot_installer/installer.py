@@ -235,10 +235,15 @@ def yes_no(ctx: InstallerContext, key: str, label: str, default: bool) -> bool:
     if key in ctx.answers:
         return bool(ctx.answers[key])
     suffix = "Y/n" if default else "y/N"
-    raw = input(f"{label} [{suffix}]: ").strip().lower()
-    if not raw:
-        return default
-    return raw in {"y", "yes", "1", "true", "да", "д"}
+    while True:
+        raw = input(f"{label} [{suffix}]: ").strip().lower()
+        if not raw:
+            return default
+        if raw in {"y", "yes", "1", "true", "да", "д", "у"}:
+            return True
+        if raw in {"n", "no", "0", "false", "нет", "н"}:
+            return False
+        print("Enter y/yes or n/no.")
 
 
 def detect_public_ip() -> str:
@@ -760,6 +765,8 @@ def remnawave_request(
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "X-Forwarded-For": "127.0.0.1",
+        "X-Forwarded-Proto": "https",
     }
     if bearer:
         headers["Authorization"] = f"Bearer {bearer}"

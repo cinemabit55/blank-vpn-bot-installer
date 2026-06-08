@@ -251,6 +251,40 @@ def test_prompt_domain_rejects_invalid_answers_file_value() -> None:
         raise AssertionError('invalid non-interactive domain should fail')
 
 
+def test_yes_no_accepts_latin_and_cyrillic_yes(monkeypatch) -> None:
+    for answer in ('y', 'у'):
+        monkeypatch.setattr('builtins.input', lambda _prompt, answer=answer: answer)
+        assert installer.yes_no(installer.InstallerContext(), 'confirm', 'Confirm', False) is True
+
+
+def test_remnawave_request_supplies_required_https_proxy_headers(monkeypatch) -> None:
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self):
+            return b'{"response": {"isRegisterAllowed": true}}'
+
+    def fake_urlopen(request, timeout):
+        captured['headers'] = {key.lower(): value for key, value in request.header_items()}
+        captured['timeout'] = timeout
+        return Response()
+
+    monkeypatch.setattr(installer.urllib.request, 'urlopen', fake_urlopen)
+
+    result = installer.remnawave_request('GET', '/api/auth/status', timeout=5)
+
+    assert result == {'response': {'isRegisterAllowed': True}}
+    assert captured['headers']['x-forwarded-for'] == '127.0.0.1'
+    assert captured['headers']['x-forwarded-proto'] == 'https'
+    assert captured['timeout'] == 5
+
+
 def test_response_value_extracts_remnawave_token() -> None:
     response = {'response': {'token': 'rw-token', 'accessToken': 'jwt-token'}}
 
