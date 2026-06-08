@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -163,6 +164,56 @@ def test_remnawave_api_wait_restarts_unhealthy_backend_once(monkeypatch, tmp_pat
 
     assert result == {'response': {'isRegisterAllowed': True}}
     assert restarts == [['docker', 'compose', 'restart', 'remnawave']]
+
+
+def test_run_with_retries_recovers_after_transient_failure(monkeypatch, tmp_path: Path) -> None:
+    attempts = 0
+    sleeps: list[int] = []
+
+    def fake_run(args, **_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise subprocess.CalledProcessError(1, args)
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(installer, 'run', fake_run)
+    monkeypatch.setattr(installer.time, 'sleep', sleeps.append)
+
+    result = installer.run_with_retries(
+        ['docker', 'compose', 'pull'],
+        cwd=tmp_path,
+        attempts=4,
+        delay_seconds=7,
+    )
+
+    assert result.returncode == 0
+    assert attempts == 3
+    assert sleeps == [7, 7]
+
+
+def test_application_start_splits_pull_build_and_up(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[list[str], Path | None]] = []
+    cfg = {
+        'bot_dir': str(tmp_path / 'bot'),
+        'remnawave_dir': str(tmp_path / 'remnawave'),
+        'cabinet_dir': str(tmp_path / 'cabinet'),
+        'caddy_dir': str(tmp_path / 'caddy'),
+    }
+
+    monkeypatch.setattr(
+        installer,
+        'run_with_retries',
+        lambda args, *, cwd=None, **_kwargs: calls.append((args, cwd)),
+    )
+    monkeypatch.setattr(installer, 'mark', lambda *_args, **_kwargs: None)
+
+    installer.docker_up_application(installer.InstallerContext(), cfg)
+
+    assert (['docker', 'compose', 'pull', 'postgres', 'redis'], tmp_path / 'bot') in calls
+    assert (['docker', 'compose', 'build', 'bot'], tmp_path / 'bot') in calls
+    assert (['docker', 'compose', 'up', '-d'], tmp_path / 'bot') in calls
+    assert (['docker', 'compose', 'build'], tmp_path / 'cabinet') in calls
 
 
 def test_docs_use_temp_file_for_interactive_bootstrap() -> None:

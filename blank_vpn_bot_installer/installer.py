@@ -96,6 +96,31 @@ def run(
     )
 
 
+def run_with_retries(
+    args: list[str],
+    *,
+    cwd: Path | None = None,
+    dry_run: bool = False,
+    attempts: int = 4,
+    delay_seconds: int = 15,
+) -> subprocess.CompletedProcess[str]:
+    last_error: subprocess.CalledProcessError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return run(args, cwd=cwd, dry_run=dry_run)
+        except subprocess.CalledProcessError as exc:
+            last_error = exc
+            if attempt >= attempts:
+                raise
+            warn(
+                f"Command failed with exit code {exc.returncode}; "
+                f"waiting {delay_seconds}s before retry {attempt + 1}/{attempts}"
+            )
+            time.sleep(delay_seconds)
+    assert last_error is not None
+    raise last_error
+
+
 def load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -749,7 +774,7 @@ def docker_up_remnawave(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
         return
     remnawave_dir = Path(cfg["remnawave_dir"])
 
-    run(["docker", "compose", "up", "-d", "remnawave"], cwd=remnawave_dir, dry_run=ctx.dry_run)
+    run_with_retries(["docker", "compose", "up", "-d", "remnawave"], cwd=remnawave_dir, dry_run=ctx.dry_run)
     mark(ctx, "remnawave_docker_up", True)
 
 
@@ -914,10 +939,22 @@ def docker_up_application(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
     cabinet_dir = Path(cfg["cabinet_dir"])
     caddy_dir = Path(cfg["caddy_dir"])
 
-    run(["docker", "compose", "up", "-d", "remnawave-subscription-page"], cwd=remnawave_dir, dry_run=ctx.dry_run)
-    run(["docker", "compose", "up", "-d", "--build"], cwd=bot_dir, dry_run=ctx.dry_run)
-    run(["docker", "compose", "up", "-d", "--build"], cwd=cabinet_dir, dry_run=ctx.dry_run)
-    run(["docker", "compose", "up", "-d"], cwd=caddy_dir, dry_run=ctx.dry_run)
+    run_with_retries(
+        ["docker", "compose", "up", "-d", "remnawave-subscription-page"],
+        cwd=remnawave_dir,
+        dry_run=ctx.dry_run,
+    )
+
+    status("pulling bot database and Redis images; interrupted downloads will be retried")
+    run_with_retries(["docker", "compose", "pull", "postgres", "redis"], cwd=bot_dir, dry_run=ctx.dry_run)
+    status("building bot image")
+    run_with_retries(["docker", "compose", "build", "bot"], cwd=bot_dir, dry_run=ctx.dry_run)
+    run_with_retries(["docker", "compose", "up", "-d"], cwd=bot_dir, dry_run=ctx.dry_run)
+
+    status("building cabinet image")
+    run_with_retries(["docker", "compose", "build"], cwd=cabinet_dir, dry_run=ctx.dry_run)
+    run_with_retries(["docker", "compose", "up", "-d"], cwd=cabinet_dir, dry_run=ctx.dry_run)
+    run_with_retries(["docker", "compose", "up", "-d"], cwd=caddy_dir, dry_run=ctx.dry_run)
     mark(ctx, "application_docker_up", True)
 
 
