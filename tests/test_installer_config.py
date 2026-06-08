@@ -261,9 +261,31 @@ def test_wait_for_health_accepts_healthy_docker_healthcheck(monkeypatch, capsys)
     monkeypatch.setattr(installer, 'docker_container_health', lambda _name: 'healthy')
     monkeypatch.setattr(installer, 'bot_health_probe', lambda: None)
 
-    installer.wait_for_health(installer.InstallerContext())
+    result = installer.wait_for_health(installer.InstallerContext())
 
+    assert result is True
     assert 'bot health endpoint is ready' in capsys.readouterr().out
+
+
+def test_preflight_rejects_existing_vpn_node(monkeypatch) -> None:
+    original_exists = installer.Path.exists
+
+    def fake_exists(path):
+        if str(path) == '/opt/remnanode':
+            return True
+        return original_exists(path)
+
+    monkeypatch.setattr(installer, 'ensure_root', lambda **_kwargs: None)
+    monkeypatch.setattr(installer.shutil, 'which', lambda _cmd: '/usr/bin/tool')
+    monkeypatch.setattr(installer, 'run', lambda *_args, **_kwargs: subprocess.CompletedProcess([], 0))
+    monkeypatch.setattr(installer.Path, 'exists', fake_exists)
+
+    try:
+        installer.preflight(installer.InstallerContext())
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        raise AssertionError('existing VPN node must stop control-plane installation')
 
 
 def test_docs_use_temp_file_for_interactive_bootstrap() -> None:

@@ -301,12 +301,32 @@ def preflight(ctx: InstallerContext) -> None:
     compose_ok = run(["docker", "compose", "version"], dry_run=ctx.dry_run, check=False, capture=True)
     if not ctx.dry_run and compose_ok.returncode != 0:
         die("Docker Compose plugin is required")
+    if not ctx.dry_run:
+        node_markers = [path for path in (Path("/opt/remnanode"), Path("/opt/templar-node")) if path.exists()]
+        if node_markers:
+            die(
+                "This server already contains a VPN node "
+                f"({', '.join(str(path) for path in node_markers)}). "
+                "Install the bot control plane on a separate clean VPS."
+            )
+    busy_ports: list[int] = []
     for port in (80, 443):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             try:
                 sock.bind(("0.0.0.0", port))
             except OSError:
-                warn(f"Port {port} is already in use. Caddy may fail unless this is the current Caddy.")
+                busy_ports.append(port)
+    if busy_ports:
+        ports = ", ".join(str(port) for port in busy_ports)
+        if not ctx.dry_run and docker_container_ready("caddy-remnawave"):
+            warn(f"Port(s) {ports} are already used by the current Caddy container.")
+        elif ctx.dry_run:
+            warn(f"Port(s) {ports} are already in use.")
+        else:
+            die(
+                f"Port(s) {ports} are already in use by another service. "
+                "The bot control plane requires a clean VPS with ports 80 and 443 available."
+            )
 
 
 def collect_answers(ctx: InstallerContext) -> dict[str, Any]:
@@ -1169,22 +1189,23 @@ def bot_health_probe() -> subprocess.CompletedProcess[str] | None:
         return None
 
 
-def wait_for_health(ctx: InstallerContext) -> None:
+def wait_for_health(ctx: InstallerContext) -> bool:
     if ctx.dry_run or ctx.skip_docker_up:
-        return
+        return True
     status("waiting for bot health endpoint")
     for attempt in range(60):
         health = docker_container_health("remnawave_bot")
         probe = bot_health_probe()
         if health == "healthy" or (probe is not None and probe.returncode == 0):
             status("bot health endpoint is ready")
-            return
+            return True
         if attempt % 6 == 0:
             status(f"bot container health: {health}; still waiting")
         time.sleep(5)
     warn("Bot health endpoint did not become ready within 5 minutes")
     run(["docker", "inspect", "--format", "{{json .State}}", "remnawave_bot"], check=False)
     run(["docker", "logs", "--tail", "80", "remnawave_bot"], check=False)
+    return False
 
 
 def write_summary(ctx: InstallerContext, cfg: dict[str, Any]) -> None:
@@ -1298,8 +1319,10 @@ def main(argv: list[str] | None = None) -> int:
     docker_up_application(ctx, cfg)
     install_aliases(ctx, cfg)
     install_installer_commands(ctx)
-    wait_for_health(ctx)
+    bot_healthy = wait_for_health(ctx)
     write_summary(ctx, cfg)
+    if not bot_healthy:
+        die("Bot did not become healthy. Review the diagnostics above; installation is incomplete.")
     status("install flow completed")
     return 0
 
