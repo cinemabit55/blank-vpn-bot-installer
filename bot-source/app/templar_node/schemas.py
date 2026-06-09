@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_network
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
@@ -479,6 +479,8 @@ class TransitConfig(TemplarBaseModel):
     service_user_credential_ref: str | None = None
     reality_credentials_ref: str | None = None
     backup_outbounds: list[BackupTransitOutbound] = Field(default_factory=list)
+    selective_domains: list[str] = Field(default_factory=list)
+    selective_ips: list[str] = Field(default_factory=list)
 
     @field_validator('inbound_tag', 'outbound_tag', 'service_user', 'flow')
     @classmethod
@@ -509,6 +511,33 @@ class TransitConfig(TemplarBaseModel):
             raise ValueError('allow_from cannot be empty when provided')
         return normalized
 
+    @field_validator('selective_domains')
+    @classmethod
+    def validate_selective_domains(cls, value: list[str]) -> list[str]:
+        normalized = [item.strip().lower() for item in value]
+        if any(not item for item in normalized):
+            raise ValueError('selective_domains cannot contain blank values')
+        if len(set(normalized)) != len(normalized):
+            raise ValueError('selective_domains must be unique')
+        return normalized
+
+    @field_validator('selective_ips')
+    @classmethod
+    def validate_selective_ips(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for item in value:
+            route = item.strip().lower()
+            if route.startswith('geoip:') and len(route) > len('geoip:'):
+                normalized.append(route)
+                continue
+            try:
+                normalized.append(str(ip_network(route, strict=False)))
+            except ValueError as exc:
+                raise ValueError(f'invalid selective transit IP/CIDR: {item!r}') from exc
+        if len(set(normalized)) != len(normalized):
+            raise ValueError('selective_ips must be unique')
+        return normalized
+
     @model_validator(mode='after')
     def validate_disabled_mode(self) -> TransitConfig:
         if self.mode != TransitMode.DISABLED:
@@ -528,6 +557,8 @@ class TransitConfig(TemplarBaseModel):
                 'service_user_credential_ref': self.service_user_credential_ref,
                 'reality_credentials_ref': self.reality_credentials_ref,
                 'backup_outbounds': self.backup_outbounds or None,
+                'selective_domains': self.selective_domains or None,
+                'selective_ips': self.selective_ips or None,
             }.items()
             if value not in (None, [], '')
         ]
@@ -762,8 +793,39 @@ class NodeConfig(TemplarBaseModel):
     def _validate_ru_warp(self) -> None:
         if self.warp.mode != WarpMode.XRAY_NATIVE:
             raise ValueError('ru-warp requires warp.mode=xray_native')
-        if self.transit.mode != TransitMode.DISABLED:
-            raise ValueError('ru-warp requires transit.mode=disabled')
+        if self.transit.mode not in (TransitMode.DISABLED, TransitMode.VLESS_REALITY):
+            raise ValueError('ru-warp transit supports only disabled or vless_reality')
+        if self.transit.mode == TransitMode.VLESS_REALITY:
+            has_inbound = self.transit.inbound_tag is not None or self.transit.listen_port is not None
+            has_outbound = self.transit.outbound_tag is not None or self.transit.foreign_exit_domain is not None
+            if not has_inbound and not has_outbound:
+                raise ValueError('ru-warp vless_reality transit requires an inbound or outbound')
+            if has_inbound:
+                self._require_fields(
+                    {
+                        'transit.inbound_tag': self.transit.inbound_tag,
+                        'transit.listen_port': self.transit.listen_port,
+                        'transit.flow': self.transit.flow,
+                        'transit.allow_from': self.transit.allow_from,
+                        'transit.service_user_credential_ref': self.transit.service_user_credential_ref,
+                        'transit.reality_credentials_ref': self.transit.reality_credentials_ref,
+                    },
+                )
+                if self.transit.flow != VISION_FLOW:
+                    raise ValueError(f'ru-warp transit.flow must be {VISION_FLOW!r}')
+            if has_outbound:
+                self._require_fields(
+                    {
+                        'transit.outbound_tag': self.transit.outbound_tag,
+                        'transit.foreign_exit_domain': self.transit.foreign_exit_domain,
+                        'transit.foreign_exit_port': self.transit.foreign_exit_port,
+                        'transit.server_names': self.transit.server_names,
+                        'transit.service_user_credential_ref': self.transit.service_user_credential_ref,
+                        'transit.reality_credentials_ref': self.transit.reality_credentials_ref,
+                    },
+                )
+                if not self.transit.selective_domains and not self.transit.selective_ips:
+                    raise ValueError('ru-warp outbound transit requires selective_domains or selective_ips')
         if self.routing is not None and self.routing.default_route == DefaultRoute.FOREIGN_EXIT:
             raise ValueError('ru-warp cannot use routing.default_route=foreign_exit')
 

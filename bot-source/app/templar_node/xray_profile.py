@@ -178,7 +178,7 @@ def _render_inbounds(
     public_tag: str,
 ) -> list[dict[str, Any]]:
     inbounds = [_public_vless_inbound(config, secret_store=secret_store, ensure_missing=ensure_missing, tag=public_tag)]
-    if config.role == NodeRole.FOREIGN_EXIT and config.transit.mode == TransitMode.VLESS_REALITY:
+    if _has_transit_inbound(config):
         inbounds.append(_transit_vless_inbound(config, secret_store=secret_store, ensure_missing=ensure_missing))
     return inbounds
 
@@ -250,7 +250,7 @@ def _render_outbounds(config: NodeConfig, *, secret_store: LocalSecretStore) -> 
     ]
     if config.warp.mode == WarpMode.XRAY_NATIVE:
         outbounds.append(_warp_outbound(config, secret_store=secret_store))
-    if config.role == NodeRole.RU_EDGE and config.transit.mode == TransitMode.VLESS_REALITY:
+    if _has_transit_outbound(config):
         outbounds.append(_transit_outbound(config, secret_store=secret_store))
         for backup in config.transit.backup_outbounds:
             outbounds.append(
@@ -389,6 +389,7 @@ def _render_routing(config: NodeConfig, *, route_overrides: RouteOverrides | Non
     elif config.warp.mode == WarpMode.XRAY_NATIVE:
         inbound_tags = _warp_inbound_tags(config, public_tag)
         warp_tag = config.warp.outbound_tag or 'WARP_OUT'
+        rules.extend(_selective_transit_rules(config, inbound_tags=inbound_tags))
         if config.country_code == 'RU':
             rules.extend(_telegram_warp_rules(inbound_tags=inbound_tags, outbound_tag=warp_tag))
         if config.warp.discord_direct:
@@ -402,9 +403,36 @@ def _render_routing(config: NodeConfig, *, route_overrides: RouteOverrides | Non
 
 def _warp_inbound_tags(config: NodeConfig, public_tag: str) -> list[str]:
     inbound_tags = [public_tag]
-    if config.role == NodeRole.FOREIGN_EXIT and config.transit.inbound_tag:
+    if _has_transit_inbound(config):
         inbound_tags.append(config.transit.inbound_tag)
     return inbound_tags
+
+
+def _selective_transit_rules(config: NodeConfig, *, inbound_tags: list[str]) -> list[dict[str, Any]]:
+    if not _has_transit_outbound(config):
+        return []
+    domains = _dedupe(_xray_selective_domain_match(item) for item in config.transit.selective_domains)
+    ips = _dedupe(config.transit.selective_ips)
+    rules: list[dict[str, Any]] = []
+    if domains:
+        rules.append(
+            {
+                'type': 'field',
+                'inboundTag': inbound_tags,
+                'domain': domains,
+                'outboundTag': config.transit.outbound_tag,
+            },
+        )
+    if ips:
+        rules.append(
+            {
+                'type': 'field',
+                'inboundTag': inbound_tags,
+                'ip': ips,
+                'outboundTag': config.transit.outbound_tag,
+            },
+        )
+    return rules
 
 
 def _route_override_rule(route_overrides: RouteOverrides | None) -> dict[str, Any] | None:
@@ -478,6 +506,21 @@ def _ru_edge_direct_rules(*, inbound_tags: list[str]) -> list[dict[str, Any]]:
 def _xray_domain_match(value: str) -> str:
     normalized = value.strip().lower().rstrip('.').removeprefix('*.')
     return f'domain:{normalized}'
+
+
+def _xray_selective_domain_match(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized.startswith(('domain:', 'full:', 'geosite:', 'regexp:')):
+        return normalized
+    return _xray_domain_match(normalized)
+
+
+def _has_transit_inbound(config: NodeConfig) -> bool:
+    return config.transit.mode == TransitMode.VLESS_REALITY and bool(config.transit.inbound_tag and config.transit.listen_port)
+
+
+def _has_transit_outbound(config: NodeConfig) -> bool:
+    return config.transit.mode == TransitMode.VLESS_REALITY and bool(config.transit.outbound_tag and config.transit.foreign_exit_domain)
 
 
 def _dedupe(values) -> list[str]:

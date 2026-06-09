@@ -509,6 +509,21 @@ def test_bundled_bot_source_supports_discord_warp_toggle() -> None:
     assert 'if config.warp.discord_direct:' in profile.read_text(encoding='utf-8')
 
 
+def test_bundled_bot_source_supports_selective_transit_between_warp_nodes() -> None:
+    root = Path(__file__).resolve().parents[1]
+    schemas = (root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py').read_text(encoding='utf-8')
+    profile = (root / 'bot-source' / 'app' / 'templar_node' / 'xray_profile.py').read_text(encoding='utf-8')
+    render = (root / 'bot-source' / 'app' / 'templar_node' / 'render.py').read_text(encoding='utf-8')
+    remnawave = (root / 'bot-source' / 'app' / 'templar_node' / 'remnawave.py').read_text(encoding='utf-8')
+
+    assert 'selective_domains: list[str]' in schemas
+    assert 'selective_ips: list[str]' in schemas
+    assert 'def _selective_transit_rules(' in profile
+    assert 'rules.extend(_selective_transit_rules(config, inbound_tags=inbound_tags))' in profile
+    assert 'comment "VLESS selective transit"' in render
+    assert 'if not (config.transit.inbound_tag and config.transit.listen_port):' in remnawave
+
+
 def test_bundled_bot_source_uses_tcp_reality_default_with_server_keepalive() -> None:
     root = Path(__file__).resolve().parents[1]
     schemas = (root / 'bot-source' / 'app' / 'templar_node' / 'schemas.py').read_text(encoding='utf-8')

@@ -164,7 +164,7 @@ def _layer_1_steps(config: NodeConfig) -> list[PlanStep]:
             ),
         )
 
-    if config.transit.mode == TransitMode.VLESS_REALITY and config.role == NodeRole.FOREIGN_EXIT:
+    if config.transit.mode == TransitMode.VLESS_REALITY and config.transit.inbound_tag and config.transit.listen_port:
         steps.append(
             PlanStep(
                 layer='Layer 1',
@@ -210,7 +210,7 @@ def _layer_2b_steps(config: NodeConfig) -> list[PlanStep]:
     ]
 
     if config.transit.mode == TransitMode.VLESS_REALITY:
-        if config.role == NodeRole.FOREIGN_EXIT:
+        if config.transit.inbound_tag and config.transit.listen_port:
             action = 'Create/update transit inbound and bridge service user'
             details = (
                 f'inbound tag: {config.transit.inbound_tag}',
@@ -219,10 +219,12 @@ def _layer_2b_steps(config: NodeConfig) -> list[PlanStep]:
                 f'reality ref: {config.transit.reality_credentials_ref}',
             )
         else:
-            action = 'Attach RU-edge transit outbound to foreign-exit'
+            action = 'Attach selective transit outbound to foreign exit'
             details = (
                 f'foreign exit: {config.transit.foreign_exit_domain}:{config.transit.foreign_exit_port}',
                 f'outbound tag: {config.transit.outbound_tag}',
+                f'selective domains: {len(config.transit.selective_domains)}',
+                f'selective IPs: {len(config.transit.selective_ips)}',
                 f'credential ref: {config.transit.service_user_credential_ref}',
                 f'reality ref: {config.transit.reality_credentials_ref}',
             )

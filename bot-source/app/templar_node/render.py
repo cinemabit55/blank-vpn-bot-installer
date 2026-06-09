@@ -173,12 +173,12 @@ def render_ufw_plan(config: NodeConfig) -> str:
         lines.append(f'ufw allow from {source} to any port {config.ssh.port} proto tcp comment "templar ssh allow-list"')
     lines.append(f'ufw allow {config.reality.public_port}/tcp comment "REALITY public inbound"')
     lines.append(f'ufw allow from {config.main_server.ipv4} to any port {config.remnanode.node_port} proto tcp comment "RemnaWave Node API"')
-    if config.role == NodeRole.FOREIGN_EXIT and config.transit.mode == TransitMode.VLESS_REALITY:
+    if config.transit.mode == TransitMode.VLESS_REALITY and config.transit.inbound_tag and config.transit.listen_port:
         if config.host.inbound_ref == 'transit':
             lines.append(f'ufw allow {config.transit.listen_port}/tcp comment "VLESS transit direct fallback"')
         for source in config.transit.allow_from or []:
             lines.append(
-                f'ufw allow from {source} to any port {config.transit.listen_port} proto tcp comment "VLESS transit from RU-edge"',
+                f'ufw allow from {source} to any port {config.transit.listen_port} proto tcp comment "VLESS selective transit"',
             )
     lines.append('ufw enable')
     return '\n'.join(lines) + '\n'
@@ -218,7 +218,7 @@ fi
 
 def render_network_tuning_service() -> str:
     return """[Unit]
-Description=VPN node TCP MSS and MTU tuning
+Description=Templar node TCP MSS and MTU tuning
 After=network-online.target ufw.service
 Wants=network-online.target
 Before=docker.service
@@ -481,7 +481,7 @@ def _warp_snippet(config: NodeConfig) -> dict | None:
 def _transit_snippet(config: NodeConfig) -> dict | None:
     if config.transit.mode != TransitMode.VLESS_REALITY:
         return None
-    if config.role == NodeRole.FOREIGN_EXIT:
+    if config.transit.inbound_tag and config.transit.listen_port:
         return {
             'direction': 'inbound',
             'tag': config.transit.inbound_tag,
@@ -500,6 +500,8 @@ def _transit_snippet(config: NodeConfig) -> dict | None:
         'service_user_credential_ref': config.transit.service_user_credential_ref,
         'reality_credentials_ref': config.transit.reality_credentials_ref,
         'backup_outbounds': [backup.model_dump(mode='json') for backup in config.transit.backup_outbounds],
+        'selective_domains': config.transit.selective_domains,
+        'selective_ips': config.transit.selective_ips,
     }
 
 

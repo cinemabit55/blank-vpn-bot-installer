@@ -519,10 +519,10 @@ class HttpRemnaWaveAdapter:
     def ensure_transit_service_user(self, config: NodeConfig, *, internal_squad_uuid: str | None = None) -> ServiceUserRecord | None:
         if not config.transit.service_user:
             return None
-        if config.role != NodeRole.FOREIGN_EXIT:
+        if not (config.transit.inbound_tag and config.transit.listen_port):
             existing = self._find_service_user(config)
             if existing is None:
-                raise RemnaWaveAdapterError('transit service user must be created by the foreign-exit phase first')
+                raise RemnaWaveAdapterError('transit service user must be created by the transit-inbound phase first')
             return ServiceUserRecord(uuid=_required_uuid(existing, 'service user'), status='existing')
         try:
             existing = self._find_service_user(config)
@@ -548,7 +548,7 @@ class HttpRemnaWaveAdapter:
                 'trafficLimitBytes': TRANSIT_SERVICE_USER_TRAFFIC_LIMIT_BYTES,
                 'trafficLimitStrategy': 'NO_RESET',
                 'expireAt': '2099-01-01T00:00:00.000Z',
-                'description': f'Transit service user for {config.display.internal_name}',
+                'description': f'Templar transit service user for {config.display.internal_name}',
                 'tag': 'SYSTEM_TRANSIT',
                 'activeInternalSquads': [internal_squad_uuid] if internal_squad_uuid else [],
             }
