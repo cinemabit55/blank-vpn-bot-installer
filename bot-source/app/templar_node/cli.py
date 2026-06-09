@@ -2713,7 +2713,11 @@ def _routing_apply_adapter(args: argparse.Namespace, config):
 
 def _http_remnawave_adapter(args: argparse.Namespace, config, secret_store: LocalSecretStore) -> HttpRemnaWaveAdapter:
     api_key = secret_store.read_text(args.api_key_ref)
-    caddy_token = secret_store.read_text(args.caddy_token_ref) if args.caddy_token_ref else None
+    caddy_token = (
+        secret_store.read_text(args.caddy_token_ref)
+        if args.auth_type == 'caddy' and args.caddy_token_ref
+        else None
+    )
     return HttpRemnaWaveAdapter(
         api_url=str(args.api_url or config.main_server.remnawave_api_url),
         auth=RemnaWaveProbeAuth(api_key=api_key, auth_type=args.auth_type, caddy_token=caddy_token),

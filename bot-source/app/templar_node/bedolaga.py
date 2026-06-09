@@ -224,7 +224,7 @@ class DatabaseBedolagaAdapter:
                 get_server_squad_by_uuid,
             )
             from app.database.database import AsyncSessionLocal
-            from app.database.models import Subscription, SubscriptionStatus, Tariff, User
+            from app.database.models import ServerSquad, Subscription, SubscriptionStatus, Tariff, User
             from app.services.remnawave_service import RemnaWaveService
         except Exception as exc:  # pragma: no cover - depends on app runtime env
             raise BedolagaAdapterError(f'cannot import Bedolaga database runtime: {exc}') from exc
@@ -317,6 +317,35 @@ class DatabaseBedolagaAdapter:
             if self.resync_subscriptions and (touched_tariff_ids or config.bedolaga.trial_eligible):
                 service = RemnaWaveService()
                 async with service.get_api_client() as api:
+                    panel_squads = await api.get_internal_squads()
+                    valid_squad_uuids = {str(squad.uuid) for squad in panel_squads if squad.uuid}
+                    if valid_squad_uuids:
+                        server_result = await db.execute(select(ServerSquad))
+                        for server in server_result.scalars().all():
+                            if server.squad_uuid in valid_squad_uuids:
+                                continue
+                            if server.is_available or server.is_trial_eligible:
+                                server.is_available = False
+                                server.is_trial_eligible = False
+                                server.updated_at = datetime.now(UTC)
+
+                        tariff_result = await db.execute(select(Tariff))
+                        for tariff in tariff_result.scalars().all():
+                            allowed = [str(item) for item in (tariff.allowed_squads or []) if item]
+                            filtered = [item for item in allowed if item in valid_squad_uuids]
+                            if filtered == allowed:
+                                continue
+                            tariff.allowed_squads = filtered
+                            tariff.updated_at = datetime.now(UTC)
+                            touched_tariff_ids.append(tariff.id)
+                            records.append(
+                                TariffAttachRecord(
+                                    key=f'id:{tariff.id}',
+                                    status=f'pruned-missing-squads:{len(allowed) - len(filtered)}',
+                                ),
+                            )
+                        await db.commit()
+
                     for tariff_id in dict.fromkeys(touched_tariff_ids):
                         tariff = await _find_tariff(db, Tariff, 'id', str(tariff_id))
                         if tariff is None:
